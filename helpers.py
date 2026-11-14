@@ -182,7 +182,8 @@ def create_order(items, nama, telepon, alamat, catatan, metode_bayar, pengiriman
                  user_id=None, dibuat_oleh=None, status="Menunggu Konfirmasi",
                  kode_tagihan="Reguler"):
     subtotal = sum(i["subtotal"] for i in items)
-    ongkir = 0 if (subtotal >= 500000 or pengiriman == "Diambil") else 25000
+    pengiriman = database.pengiriman_pilihan(pengiriman)
+    ongkir = database.ongkir_untuk(pengiriman, subtotal)
     total = subtotal + ongkir
     kode = next_order_code()
     kode_lacak = database.next_number("nomor_lacak")

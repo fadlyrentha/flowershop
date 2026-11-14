@@ -38,19 +38,18 @@
 
       <div class="rf-card p-4 mb-3">
         <h6 class="fw-bold mb-3">Operasional & pengiriman</h6>
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label small fw-semibold">Jam operasional (Senin–Sabtu)</label>
-            <input name="jam_operasional" class="form-control" value="{{ settings.jam_operasional }}">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label small fw-semibold">Jam operasional (Minggu)</label>
-            <input name="jam_minggu" class="form-control" value="{{ settings.jam_minggu }}">
-          </div>
-          <div class="col-12">
-            <label class="form-label small fw-semibold">Info same day delivery</label>
-            <textarea name="sameday_info" class="form-control" rows="2">{{ settings.sameday_info }}</textarea>
-          </div>
+        <p class="small text-muted mb-3">
+          Jam layanan harian dan same day delivery diatur di panel
+          <a href="{{ url_for('admin.jam_operasional') }}">Jam Operasional</a>. Metode COD, Kurir,
+          Cargo, KIB, dan Travel diatur di <a href="{{ url_for('admin.pengiriman') }}">Metode Pengiriman</a>.
+        </p>
+        <div class="d-flex flex-wrap gap-2">
+          <a class="btn btn-sm btn-outline-rf" href="{{ url_for('admin.jam_operasional') }}">
+            <i class="bi bi-clock-history me-1"></i> Jam Operasional
+          </a>
+          <a class="btn btn-sm btn-outline-rf" href="{{ url_for('admin.pengiriman') }}">
+            <i class="bi bi-truck me-1"></i> Metode Pengiriman
+          </a>
         </div>
       </div>
 

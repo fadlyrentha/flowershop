@@ -63,7 +63,7 @@ def new_order():
         alamat = request.form.get("alamat", "").strip() or user["alamat"]
         catatan = request.form.get("catatan", "").strip()
         metode = request.form.get("metode_bayar", "Transfer Bank")
-        pengiriman = request.form.get("pengiriman", "Dikirim")
+        pengiriman = database.pengiriman_pilihan(request.form.get("pengiriman", ""))
 
         order_id, kode = helpers.create_order(
             items, nama, telepon, alamat, catatan, metode, pengiriman,

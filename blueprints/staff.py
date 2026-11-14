@@ -213,7 +213,7 @@ def _baca_produk_qty():
 def _hitung_ulang_pesanan(order):
     items = database.query("SELECT * FROM order_items WHERE order_id = ?", (order["id"],))
     subtotal = sum(i["subtotal"] for i in items)
-    ongkir = 0 if (subtotal >= 500000 or order["pengiriman"] == "Diambil") else 25000
+    ongkir = database.ongkir_untuk(order["pengiriman"], subtotal)
     total = subtotal + ongkir
     database.execute(
         "UPDATE orders SET subtotal = ?, ongkir = ?, total = ?, updated_at = ? WHERE id = ?",
@@ -375,7 +375,7 @@ def new_order():
             request.form.get("alamat", "").strip(),
             request.form.get("catatan", "").strip(),
             request.form.get("metode_bayar", "Transfer Bank"),
-            request.form.get("pengiriman", "Dikirim"),
+            database.pengiriman_pilihan(request.form.get("pengiriman", "")),
             user_id=user_id, dibuat_oleh=helpers.current_user()["id"],
             kode_tagihan=kode_tagihan)
         flash("Pesanan %s dibuat." % kode, "success")

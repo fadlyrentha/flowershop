@@ -169,7 +169,7 @@ def replace_product():
 
         items = database.query("SELECT * FROM order_items WHERE order_id = ?", (order["id"],))
         new_subtotal = sum(i["subtotal"] for i in items)
-        ongkir = 0 if (new_subtotal >= 500000 or order["pengiriman"] == "Diambil") else 25000
+        ongkir = database.ongkir_untuk(order["pengiriman"], new_subtotal)
         new_total = new_subtotal + ongkir
         database.execute(
             "UPDATE orders SET subtotal = ?, ongkir = ?, total = ?, updated_at = ? WHERE id = ?",
@@ -240,7 +240,7 @@ def _tambah_produk_pesanan():
 
     items = database.query("SELECT * FROM order_items WHERE order_id = ?", (order_id,))
     new_subtotal = sum(i["subtotal"] for i in items)
-    ongkir = 0 if (new_subtotal >= 500000 or order["pengiriman"] == "Diambil") else 25000
+    ongkir = database.ongkir_untuk(order["pengiriman"], new_subtotal)
     new_total = new_subtotal + ongkir
     database.execute(
         "UPDATE orders SET subtotal = ?, ongkir = ?, total = ?, updated_at = ? WHERE id = ?",

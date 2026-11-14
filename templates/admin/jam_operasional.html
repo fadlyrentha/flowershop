@@ -1,0 +1,74 @@
+{% extends "panel_base.html" %}
+{% block title %}Jam Operasional{% endblock %}
+{% block heading %}Jam Operasional & Same Day Delivery{% endblock %}
+{% block subheading %}Atur jam layanan tiap hari dan kapan same day delivery tersedia{% endblock %}
+{% block content %}
+<form method="post">
+  <div class="row g-3">
+    <div class="col-lg-7">
+      <div class="rf-card p-4 mb-3">
+        <h6 class="fw-bold mb-3">Jam layanan per hari</h6>
+        <p class="small text-muted">
+          Isi jam buka dan tutup dengan format 24 jam. Samakan jam buka dan tutup untuk menandai hari libur.
+        </p>
+        <div class="table-responsive">
+          <table class="table table-rf align-middle mb-0">
+            <thead><tr><th>Hari</th><th style="width:150px">Buka</th><th style="width:150px">Tutup</th></tr></thead>
+            <tbody>
+              {% for key, label in hari %}
+              <tr>
+                <td class="fw-semibold small">{{ label }}</td>
+                <td><input type="time" name="jam_buka_{{ key }}" class="form-control form-control-sm"
+                           value="{{ jam[key][0] }}" required></td>
+                <td><input type="time" name="jam_tutup_{{ key }}" class="form-control form-control-sm"
+                           value="{{ jam[key][1] }}" required></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-5">
+      <div class="rf-card p-4 mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="fw-bold mb-0">Same day delivery</h6>
+          <div class="form-check form-switch mb-0">
+            <input class="form-check-input" type="checkbox" role="switch" name="sameday_aktif"
+                   id="swSameday" {% if sameday_aktif %}checked{% endif %}>
+            <label class="form-check-label small" for="swSameday">Aktif</label>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Batas jam pesanan same day</label>
+          <input type="time" name="sameday_batas_jam" class="form-control" value="{{ sameday_batas }}" required>
+          <div class="small text-muted mt-1">Pesanan setelah jam ini diproses hari berikutnya.</div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold d-block">Hari layanan</label>
+          {% for key, label in hari %}
+          <label class="d-inline-flex align-items-center gap-2 border rounded-3 px-2 py-1 small me-1 mb-1">
+            <input class="form-check-input mt-0" type="checkbox" name="sameday_hari" value="{{ key }}"
+                   {% if key in sameday_hari %}checked{% endif %}>
+            <span>{{ label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+        <div class="mb-0">
+          <label class="form-label small fw-semibold">Info same day di website</label>
+          <textarea name="sameday_info" class="form-control" rows="4">{{ sameday_info }}</textarea>
+        </div>
+      </div>
+
+      <div class="rf-card p-3 small mb-3">
+        <div class="fw-semibold mb-1"><i class="bi bi-info-circle me-1 text-rf"></i>Catatan</div>
+        Blok jam operasional dan same day yang tampil di beranda diatur terpisah pada menu
+        <a href="{{ url_for('admin.katalog') }}">Kolom Katalog</a>.
+      </div>
+
+      <button class="btn btn-primary w-100"><i class="bi bi-check2 me-1"></i> Simpan Pengaturan</button>
+    </div>
+  </div>
+</form>
+{% endblock %}

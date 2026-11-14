@@ -195,23 +195,29 @@
       <div class="rf-card p-4 h-100">
         <span class="rf-chip mb-3">Jam Operasional</span>
         <h3 class="fw-bold mb-3">Waktu layanan kami</h3>
+        <p class="mb-3">
+          {% if toko_buka %}
+          <span class="badge bg-success-subtle text-success-emphasis">
+            <i class="bi bi-check-circle me-1"></i>Buka sekarang
+          </span>
+          {% else %}
+          <span class="badge bg-secondary-subtle text-secondary-emphasis">
+            <i class="bi bi-moon-stars me-1"></i>Di luar jam layanan
+          </span>
+          {% endif %}
+        </p>
         <ul class="list-unstyled mb-0">
+          {% for label, teks in jam_ringkas %}
           <li class="d-flex justify-content-between border-bottom py-2">
-            <span><i class="bi bi-clock me-2 text-rf"></i>Senin – Sabtu</span>
-            <strong>07.00 – 19.00 WIB</strong>
+            <span><i class="bi bi-clock me-2 text-rf"></i>{{ label }}</span>
+            <strong>{{ teks }}</strong>
           </li>
-          <li class="d-flex justify-content-between border-bottom py-2">
-            <span><i class="bi bi-clock me-2 text-rf"></i>Minggu</span>
-            <strong>08.00 – 14.00 WIB</strong>
-          </li>
+          {% endfor %}
           <li class="d-flex justify-content-between py-2">
             <span><i class="bi bi-telephone me-2 text-rf"></i>Telepon</span>
             <strong>{{ settings.telepon }}</strong>
           </li>
         </ul>
-        <p class="small text-muted mb-0 mt-3">
-          {{ settings.jam_operasional }} · {{ settings.jam_minggu }}
-        </p>
       </div>
     </div>
     <div class="col-lg-7">
@@ -219,6 +225,12 @@
         <span class="rf-chip bg-white mb-3">Same Day Delivery</span>
         <h3 class="fw-bold mb-3">Dipesan pagi, tiba hari ini juga</h3>
         <p class="text-muted">{{ settings.sameday_info }}</p>
+        {% if not sameday_sekarang %}
+        <p class="small text-danger mb-3">
+          <i class="bi bi-exclamation-circle me-1"></i>
+          Same day delivery sedang tidak tersedia untuk pesanan saat ini.
+        </p>
+        {% endif %}
         <div class="row g-3 mt-2">
           <div class="col-sm-4">
             <div class="bg-white rounded-3 p-3 h-100">

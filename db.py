@@ -1,4 +1,5 @@
 """Skema basis data + seed data untuk Rasty Florist."""
+import json
 import os
 import random
 import re
@@ -29,6 +30,49 @@ ORDER_STATUS = [
     "Dibatalkan",
 ]
 QC_STATUS = ["Belum Dicek", "Lolos QC", "Tidak Lolos"]
+
+# Hari kerja untuk panel jam operasional.
+HARI = [
+    ("senin", "Senin"),
+    ("selasa", "Selasa"),
+    ("rabu", "Rabu"),
+    ("kamis", "Kamis"),
+    ("jumat", "Jumat"),
+    ("sabtu", "Sabtu"),
+    ("minggu", "Minggu"),
+]
+
+# Jam layanan bawaan per hari: (buka, tutup).
+JAM_BAWAAN = {
+    "senin": ("07:00", "19:00"),
+    "selasa": ("07:00", "19:00"),
+    "rabu": ("07:00", "19:00"),
+    "kamis": ("07:00", "19:00"),
+    "jumat": ("07:00", "19:00"),
+    "sabtu": ("07:00", "19:00"),
+    "minggu": ("08:00", "14:00"),
+}
+
+# Metode penyerahan barang ke pelanggan yang bisa diaktifkan administrator.
+# (kunci pengaturan, label, keterangan)
+PENGIRIMAN_METODE = [
+    ("kirim_cod", "COD", "Bayar tunai saat produk diterima penerima."),
+    ("kirim_kurir", "Kurir", "Diantar kurir internal toko ke alamat penerima."),
+    ("kirim_cargo", "Cargo", "Dikirim lewat ekspedisi cargo untuk luar kota."),
+    ("kirim_kib", "KIB", "Dikirim lewat kereta api (KIB) untuk pengiriman cepat."),
+    ("kirim_travel", "Travel", "Dititipkan lewat jasa travel antar kota."),
+]
+
+# Menu navigasi halaman depan yang bisa disembunyikan administrator.
+# (kunci pengaturan, label, keterangan)
+MENU_PUBLIK = [
+    ("nav_katalog", "Katalog", "Tautan menuju bagian katalog produk."),
+    ("nav_stok", "Stok", "Tautan menuju tabel ketersediaan stok."),
+    ("nav_testimoni", "Testimoni", "Tautan menuju karusel testimoni pelanggan."),
+    ("nav_jam", "Jam Operasional", "Tautan menuju blok jam layanan."),
+    ("nav_lacak", "Lacak Pesanan", "Tautan menuju halaman pelacakan pesanan."),
+    ("nav_monitoring", "Monitoring", "Tautan menuju halaman monitoring mandiri."),
+]
 
 KODE_TAGIHAN = ["Reguler", "Abonemen IB", "Abonemen KK", "Abonemen KTR"]
 
@@ -116,7 +160,7 @@ CREATE TABLE IF NOT EXISTS orders (
     metode_bayar TEXT DEFAULT 'Transfer Bank',
     status TEXT NOT NULL DEFAULT 'Menunggu Konfirmasi',
     status_bayar TEXT NOT NULL DEFAULT 'Belum Bayar',
-    pengiriman TEXT DEFAULT 'Dikirim',
+    pengiriman TEXT DEFAULT 'Kurir',
     dibuat_oleh INTEGER,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
@@ -264,12 +308,38 @@ DEFAULT_SETTINGS = {
     "instagram": "https://instagram.com/rastyflorist",
     "tiktok": "https://tiktok.com/@rastyflorist",
     "whatsapp": "6281234567890",
-    "jam_operasional": "Senin - Sabtu, 07.00 - 19.00 WIB",
-    "jam_minggu": "Minggu, 08.00 - 14.00 WIB",
+    "jam_buka_senin": "07:00",
+    "jam_tutup_senin": "19:00",
+    "jam_buka_selasa": "07:00",
+    "jam_tutup_selasa": "19:00",
+    "jam_buka_rabu": "07:00",
+    "jam_tutup_rabu": "19:00",
+    "jam_buka_kamis": "07:00",
+    "jam_tutup_kamis": "19:00",
+    "jam_buka_jumat": "07:00",
+    "jam_tutup_jumat": "19:00",
+    "jam_buka_sabtu": "07:00",
+    "jam_tutup_sabtu": "19:00",
+    "jam_buka_minggu": "08:00",
+    "jam_tutup_minggu": "14:00",
+    "sameday_aktif": "1",
+    "sameday_batas_jam": "14:00",
+    "sameday_hari": json.dumps(["senin", "selasa", "rabu", "kamis", "jumat", "sabtu"]),
     "sameday_info": (
         "Pesanan sebelum pukul 14.00 WIB dikirim di hari yang sama untuk area "
         "Bandung dan sekitarnya. Gratis ongkir untuk pembelian minimal Rp 500.000."
     ),
+    "kirim_cod": "1",
+    "kirim_kurir": "1",
+    "kirim_cargo": "1",
+    "kirim_kib": "1",
+    "kirim_travel": "1",
+    "nav_katalog": "1",
+    "nav_stok": "1",
+    "nav_testimoni": "1",
+    "nav_jam": "1",
+    "nav_lacak": "1",
+    "nav_monitoring": "1",
     "warna_primer": "#b3204f",
     "warna_sekunder": "#f7e4ea",
     "logo": "",
@@ -339,6 +409,143 @@ def katalog_aktif():
 def katalog_dari(settings):
     """Sama seperti katalog_aktif() tetapi memakai dict pengaturan yang sudah dibaca."""
     return {key: settings.get(key, "1") == "1" for key, _label, _ket in KATALOG_SEKSI}
+
+
+# ------------------------------------------------------------- pengiriman ----
+def pengiriman_metode(settings=None):
+    """Daftar metode pengiriman aktif. Selalu menyisakan minimal satu metode."""
+    data = settings or all_settings()
+    aktif = [label for key, label, _ket in PENGIRIMAN_METODE
+             if data.get(key, "1") == "1"]
+    return aktif or [PENGIRIMAN_METODE[1][1]]
+
+
+def pengiriman_aktif(settings=None):
+    data = settings or all_settings()
+    return {key: data.get(key, "1") == "1" for key, _label, _ket in PENGIRIMAN_METODE}
+
+
+def pengiriman_valid(nilai, settings=None):
+    """Cara pengiriman harus termasuk metode yang diaktifkan administrator."""
+    return nilai == "Diambil" or nilai in pengiriman_metode(settings)
+
+
+def pengiriman_pilihan(nilai, settings=None):
+    """Pakai nilai kiriman bila masih aktif, jika tidak jatuh ke Kurir lalu metode pertama."""
+    if pengiriman_valid(nilai, settings):
+        return nilai
+    aktif = pengiriman_metode(settings)
+    return "Kurir" if "Kurir" in aktif else aktif[0]
+
+
+def ongkir_untuk(cara, subtotal):
+    """COD dan pengambilan di toko tidak dikenakan ongkir kurir."""
+    if subtotal >= 500000 or cara in ("Diambil", "COD"):
+        return 0
+    return 25000
+
+
+# ------------------------------------------------------- jam operasional ----
+def jam_harian(settings=None):
+    """Dict hari -> (buka, tutup) sesuai panel jam operasional."""
+    data = settings or all_settings()
+    hasil = {}
+    for key, _label in HARI:
+        buka, tutup = JAM_BAWAAN[key]
+        hasil[key] = (data.get("jam_buka_" + key, buka), data.get("jam_tutup_" + key, tutup))
+    return hasil
+
+
+def jam_dari(settings):
+    return {key: (settings.get("jam_buka_" + key, JAM_BAWAAN[key][0]),
+                  settings.get("jam_tutup_" + key, JAM_BAWAAN[key][1]))
+            for key, _label in HARI}
+
+
+def _jam_teks(nilai):
+    """'07:00' -> '07.00'."""
+    return nilai.replace(":", ".")
+
+
+def jam_daftar(settings=None):
+    """Baris jam layanan siap tampil: hari, label, dan rentang jam."""
+    data = settings or all_settings()
+    jam = jam_dari(data)
+    rows = []
+    for key, label in HARI:
+        buka, tutup = jam[key]
+        rows.append({
+            "key": key,
+            "label": label,
+            "buka": buka,
+            "tutup": tutup,
+            "tutup_hari": buka == tutup or not buka or not tutup,
+            "teks": "%s – %s WIB" % (_jam_teks(buka), _jam_teks(tutup)),
+        })
+    return rows
+
+
+def jam_ringkas(settings=None):
+    """Kelompokkan hari berurutan yang jamnya sama: [(label, teks jam), ...]."""
+    rows = jam_daftar(settings)
+    grup = []
+    for row in rows:
+        nilai = "Tutup" if row["tutup_hari"] else row["teks"]
+        if grup and grup[-1][1] == nilai:
+            grup[-1][2] = row["label"]
+        else:
+            grup.append([row["label"], nilai, row["label"]])
+    hasil = []
+    for awal, nilai, akhir in grup:
+        label = awal if awal == akhir else "%s – %s" % (awal, akhir)
+        hasil.append((label, nilai))
+    return hasil
+
+
+def toko_buka(settings=None, saat=None):
+    """True bila jam sekarang berada di rentang layanan hari ini."""
+    saat = saat or datetime.now()
+    key = HARI[saat.weekday()][0]
+    buka, tutup = jam_harian(settings)[key]
+    try:
+        jam_buka = datetime.strptime(buka, "%H:%M").time()
+        jam_tutup = datetime.strptime(tutup, "%H:%M").time()
+    except ValueError:
+        return False
+    return jam_buka <= saat.time() <= jam_tutup
+
+
+def sameday_hari(settings=None):
+    """Daftar kunci hari yang dilayani same day delivery."""
+    data = settings or all_settings()
+    try:
+        daftar = json.loads(data.get("sameday_hari", "[]"))
+    except (TypeError, ValueError):
+        daftar = []
+    kunci = [key for key, _label in HARI]
+    return [k for k in daftar if k in kunci]
+
+
+def sameday_tersedia(settings=None, saat=None):
+    """Same day bisa dipakai bila fitur aktif dan sekarang sebelum batas jam."""
+    saat = saat or datetime.now()
+    data = settings or all_settings()
+    if data.get("sameday_aktif", "1") != "1":
+        return False
+    key = HARI[saat.weekday()][0]
+    if key not in sameday_hari(data):
+        return False
+    try:
+        batas = datetime.strptime(data.get("sameday_batas_jam", "14:00"), "%H:%M").time()
+    except ValueError:
+        return False
+    return saat.time() <= batas
+
+
+# ------------------------------------------------------------ menu publik ----
+def menu_publik(settings=None):
+    data = settings or all_settings()
+    return {key: data.get(key, "1") == "1" for key, _label, _ket in MENU_PUBLIK}
 
 # Format nomor dokumen: (kunci pengaturan, tabel, kolom, label, contoh)
 NOMOR_FORMAT = {
@@ -612,6 +819,12 @@ RESET_BAGIAN = [
      "kembali ke nilai bawaan."),
     ("katalog", "Kolom Katalog Beranda",
      "Semua kolom katalog (hero, produk, stok, jam, testimoni, sosial) diaktifkan kembali."),
+    ("pengiriman", "Metode Pengiriman",
+     "COD, Kurir, Cargo, KIB, dan Travel diaktifkan kembali."),
+    ("jam_operasional", "Jam Operasional & Same Day Delivery",
+     "Jam layanan tiap hari dan pengaturan same day delivery kembali ke nilai bawaan."),
+    ("menu_publik", "Menu Halaman Depan",
+     "Seluruh menu navigasi di halaman depan ditampilkan kembali."),
     ("cms", "Isi Beranda (CMS)",
      "Slider hero, testimoni, dan konten sosial media diganti dengan data contoh bawaan."),
     ("hak_akses", "Hak Akses Peran",
@@ -636,6 +849,30 @@ def reset_katalog():
     for key, _label, _ket in KATALOG_SEKSI:
         set_setting(key, "1")
     return len(KATALOG_SEKSI)
+
+
+def reset_pengiriman():
+    """Aktifkan kembali semua metode pengiriman."""
+    for key, _label, _ket in PENGIRIMAN_METODE:
+        set_setting(key, "1")
+    return len(PENGIRIMAN_METODE)
+
+
+def reset_jam_operasional():
+    """Kembalikan jam layanan harian dan pengaturan same day ke nilai bawaan."""
+    kunci = ["sameday_aktif", "sameday_batas_jam", "sameday_hari"]
+    for key, _label in HARI:
+        kunci += ["jam_buka_" + key, "jam_tutup_" + key]
+    for key in kunci:
+        set_setting(key, DEFAULT_SETTINGS[key])
+    return len(kunci)
+
+
+def reset_menu_publik():
+    """Tampilkan kembali seluruh menu navigasi halaman depan."""
+    for key, _label, _ket in MENU_PUBLIK:
+        set_setting(key, "1")
+    return len(MENU_PUBLIK)
 
 
 def reset_cms():
@@ -665,6 +902,9 @@ def reset_hak_akses():
 RESET_AKSI = {
     "pengaturan": reset_pengaturan,
     "katalog": reset_katalog,
+    "pengiriman": reset_pengiriman,
+    "jam_operasional": reset_jam_operasional,
+    "menu_publik": reset_menu_publik,
     "cms": reset_cms,
     "hak_akses": reset_hak_akses,
 }
@@ -715,6 +955,23 @@ def _migrate(db):
         db.execute("UPDATE role_features SET aktif = 0 WHERE role = 'pelanggan' AND feature = 'invoice'")
         db.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('migrasi_invoice_pelanggan', '1')")
         db.commit()
+    # Cara pengiriman lama "Dikirim" diganti nama metode yang kini bisa dikonfigurasi.
+    done = db.execute("SELECT value FROM settings WHERE key = 'migrasi_metode_pengiriman'").fetchone()
+    if not done:
+        db.execute("UPDATE orders SET pengiriman = 'Kurir' WHERE pengiriman IN ('Dikirim', '')")
+        db.execute("INSERT OR REPLACE INTO settings (key, value)"
+                   " VALUES ('migrasi_metode_pengiriman', '1')")
+        db.commit()
+    # Panel konfigurasi baru: sediakan baris hak akses agar menunya langsung tampil.
+    done = db.execute("SELECT value FROM settings WHERE key = 'migrasi_konfigurasi_panel'").fetchone()
+    if not done:
+        for feature in ("pengiriman_metode", "jam_operasional", "menu_publik"):
+            db.execute(
+                "INSERT OR IGNORE INTO role_features (role, feature, aktif)"
+                " VALUES ('administrator', ?, 1)", (feature,))
+        db.execute("INSERT OR REPLACE INTO settings (key, value)"
+                   " VALUES ('migrasi_konfigurasi_panel', '1')")
+        db.commit()
 
 
 # ---------------------------------------------------------------- features ----
@@ -753,6 +1010,7 @@ BASE_FEATURES = {
         "notifikasi", "label", "konfirmasi_order", "format_nomor", "monitoring",
         "monitoring_harian", "monitoring_mandiri", "ganti_produk", "template_invoice",
         "backup", "katalog_seksi", "rekening", "reset",
+        "pengiriman_metode", "jam_operasional", "menu_publik",
     ],
 }
 
@@ -904,7 +1162,7 @@ def seed_demo():
             "INSERT INTO orders (kode, kode_lacak, user_id, nama_pelanggan, telepon, alamat, catatan,"
             " subtotal, ongkir, total, metode_bayar, status, status_bayar, pengiriman, dibuat_oleh,"
             " created_at, updated_at)"
-            " VALUES (?, ?, ?, ?, ?, ?, '', 0, 0, 0, ?, ?, ?, 'Dikirim', ?, ?, ?)",
+            " VALUES (?, ?, ?, ?, ?, ?, '', 0, 0, 0, ?, ?, ?, 'Kurir', ?, ?, ?)",
             (kode, kode_lacak, cust["id"], cust["nama"], cust["telepon"], cust["alamat"],
              "Transfer Bank" if idx % 2 == 0 else "QRIS",
              status, "Lunas" if status == "Selesai" else "Belum Bayar",

@@ -41,7 +41,7 @@ res = cust.post("/pelanggan/pesanan/baru", data={
     "alamat": "Jl. Kenanga No. 8",
     "catatan": "uji otomatis",
     "metode_bayar": "Transfer Bank",
-    "pengiriman": "Dikirim",
+    "pengiriman": "Kurir",
 }, follow_redirects=True)
 if res.status_code != 200:
     errors.append(("buat pesanan", res.status_code))
@@ -394,7 +394,7 @@ with app.app_context():
     prod = database.query("SELECT * FROM products WHERE aktif = 1 AND stok > 2 ORDER BY id LIMIT 1", one=True)
 r = fin.post("/keuangan/pesanan-baru", data={
     "nama_pelanggan": "Pelanggan Abonemen", "telepon": "0812", "alamat": "Jl. Uji",
-    "metode_bayar": "Transfer Bank", "pengiriman": "Dikirim", "kode_tagihan": "Abonemen IB",
+    "metode_bayar": "Transfer Bank", "pengiriman": "Kurir", "kode_tagihan": "Abonemen IB",
     "product_id[]": [str(prod["id"])], "qty[]": ["1"],
 }, follow_redirects=True)
 if r.status_code != 200:
@@ -807,6 +807,75 @@ with app.app_context():
     import db as database
     if "Mandiri" not in database.get_setting("rekening_bank"):
         errors.append(("rekening tidak tersimpan",))
+
+# 7f1. Administrator: metode pengiriman, jam operasional, menu publik
+r = admin.post("/admin/pengiriman", data={"kirim_kurir": "on", "kirim_cod": "on"},
+               follow_redirects=True)
+if r.status_code != 200:
+    errors.append(("simpan metode pengiriman", r.status_code))
+with app.app_context():
+    import db as database
+    if database.pengiriman_metode() != ["COD", "Kurir"]:
+        errors.append(("metode pengiriman tidak tersimpan", database.pengiriman_metode()))
+    if database.get_setting("kirim_cargo") != "0":
+        errors.append(("cargo seharusnya nonaktif",))
+r = admin.post("/admin/pengiriman", data={}, follow_redirects=True)
+with app.app_context():
+    import db as database
+    if not database.pengiriman_metode():
+        errors.append(("metode pengiriman kosong",))
+
+r = admin.post("/admin/jam-operasional", data={
+    "jam_buka_senin": "08:00", "jam_tutup_senin": "17:00",
+    "jam_buka_minggu": "08:00", "jam_tutup_minggu": "08:00",
+    "sameday_batas_jam": "15:30", "sameday_info": "Info uji same day",
+    "sameday_hari": ["senin", "selasa"],
+}, follow_redirects=True)
+if r.status_code != 200:
+    errors.append(("simpan jam operasional", r.status_code))
+with app.app_context():
+    import db as database
+    if database.jam_dari(database.all_settings())["senin"] != ("08:00", "17:00"):
+        errors.append(("jam senin tidak tersimpan",))
+    if database.sameday_hari() != ["senin", "selasa"]:
+        errors.append(("hari same day tidak tersimpan", database.sameday_hari()))
+r = admin.post("/admin/jam-operasional", data={
+    "jam_buka_senin": "bukan-jam", "jam_tutup_senin": "17:00",
+    "sameday_batas_jam": "14:00",
+}, follow_redirects=True)
+with app.app_context():
+    import db as database
+    if database.get_setting("jam_buka_senin") != "08:00":
+        errors.append(("jam tidak valid tetap tersimpan",))
+
+r = admin.post("/admin/menu-publik", data={"nav_katalog": "on"}, follow_redirects=True)
+if r.status_code != 200:
+    errors.append(("simpan menu publik", r.status_code))
+with app.app_context():
+    import db as database
+    if database.get_setting("nav_lacak") != "0":
+        errors.append(("menu lacak seharusnya nonaktif",))
+r = admin.get("/")
+if r.status_code != 200:
+    errors.append(("beranda menu publik", r.status_code))
+elif b'Lacak</a>' in r.data:
+    errors.append(("menu lacak masih tampil walau dinonaktifkan",))
+
+r = admin.post("/admin/reset", data={"aksi": "menu_publik"}, follow_redirects=True)
+with app.app_context():
+    import db as database
+    if database.get_setting("nav_lacak") != "1":
+        errors.append(("reset menu publik tidak mengaktifkan kembali",))
+r = admin.post("/admin/reset", data={"aksi": "jam_operasional"}, follow_redirects=True)
+with app.app_context():
+    import db as database
+    if database.get_setting("sameday_batas_jam") != database.DEFAULT_SETTINGS["sameday_batas_jam"]:
+        errors.append(("reset jam operasional tidak kembali bawaan",))
+r = admin.post("/admin/reset", data={"aksi": "pengiriman"}, follow_redirects=True)
+with app.app_context():
+    import db as database
+    if len(database.pengiriman_metode()) != len(database.PENGIRIMAN_METODE):
+        errors.append(("reset metode pengiriman tidak lengkap",))
 
 r = admin.post("/admin/reset", data={"aksi": "katalog"}, follow_redirects=True)
 if r.status_code != 200:

@@ -44,6 +44,7 @@ ROUTES = {
     "admin": ["/admin/", "/admin/cms", "/admin/pengaturan", "/admin/akun", "/admin/hak-akses",
               "/admin/format-nomor", "/admin/template-invoice", "/admin/backup",
               "/admin/katalog", "/admin/rekening", "/admin/reset",
+              "/admin/pengiriman", "/admin/jam-operasional", "/admin/menu-publik",
               "/admin/notifikasi", "/staff/",
               "/staff/pesanan", "/staff/pelanggan", "/staff/konfirmasi-order", "/staff/produk",
               "/staff/stok", "/staff/komplain", "/staff/laporan", "/qc/", "/qc/pesanan",

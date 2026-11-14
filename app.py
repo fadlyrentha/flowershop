@@ -114,9 +114,17 @@ def create_app():
             "KODE_TAGIHAN": database.KODE_TAGIHAN,
             "STATUS_KELUHAN": database.STATUS_KELUHAN,
             "KATALOG_SEKSI": database.KATALOG_SEKSI,
+            "PENGIRIMAN_METODE": database.PENGIRIMAN_METODE,
+            "MENU_PUBLIK": database.MENU_PUBLIK,
             "INVOICE_LOGO_UKURAN": database.INVOICE_LOGO_UKURAN,
             "invoice_logo_px": database.invoice_logo_px(settings),
             "katalog": database.katalog_dari(settings),
+            "pengiriman_list": database.pengiriman_metode(settings),
+            "menu_publik": database.menu_publik(settings),
+            "jam_daftar": database.jam_daftar(settings),
+            "jam_ringkas": database.jam_ringkas(settings),
+            "toko_buka": database.toko_buka(settings),
+            "sameday_sekarang": database.sameday_tersedia(settings),
             "wa_link": helpers.wa_link,
         }
 

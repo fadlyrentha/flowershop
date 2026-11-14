@@ -549,7 +549,7 @@ def new_order():
             request.form.get("alamat", "").strip(),
             request.form.get("catatan", "").strip(),
             request.form.get("metode_bayar", "Transfer Bank"),
-            request.form.get("pengiriman", "Dikirim"),
+            database.pengiriman_pilihan(request.form.get("pengiriman", "")),
             user_id=user_id, dibuat_oleh=helpers.current_user()["id"],
             kode_tagihan=kode_tagihan)
         flash("Pesanan %s dibuat dengan kategori %s." % (kode, kode_tagihan), "success")

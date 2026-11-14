@@ -1,5 +1,7 @@
 """Halaman administrator: CMS beranda, pengaturan situs, staff, hak akses."""
+import json
 import os
+from datetime import datetime
 
 from flask import (Blueprint, abort, current_app, flash, redirect, render_template,
                    request, send_file, url_for)
@@ -57,6 +59,9 @@ FEATURE_LABELS = {
     "katalog_seksi": "Kolom Katalog Beranda",
     "rekening": "Rekening Bank Faktur",
     "reset": "Reset Pengaturan",
+    "pengiriman_metode": "Metode Pengiriman",
+    "jam_operasional": "Jam Operasional & Same Day",
+    "menu_publik": "Menu Halaman Depan",
 }
 
 
@@ -68,7 +73,8 @@ def guard():
 
 STAFF_ONLY = ("accounts", "account_delete", "permissions", "settings", "dashboard",
               "nomor_format", "invoice_template", "invoice_template_delete_design",
-              "backup", "backup_download", "backup_delete", "katalog", "rekening", "reset")
+              "backup", "backup_download", "backup_delete", "katalog", "rekening", "reset",
+              "pengiriman", "jam_operasional", "menu_publik")
 
 
 @bp.before_request
@@ -206,8 +212,7 @@ def cms_delete(jenis, item_id):
 def settings():
     if request.method == "POST":
         keys = ["nama_toko", "tagline", "deskripsi", "alamat", "telepon", "email", "instagram",
-                "tiktok", "whatsapp", "jam_operasional", "jam_minggu", "sameday_info",
-                "warna_primer", "warna_sekunder", "footer_text"]
+                "tiktok", "whatsapp", "warna_primer", "warna_sekunder", "footer_text"]
         for key in keys:
             if key in request.form:
                 database.set_setting(key, request.form.get(key, "").strip())
@@ -403,6 +408,88 @@ def katalog():
         return redirect(url_for("admin.katalog"))
     return render_template("admin/katalog.html", seksi=database.KATALOG_SEKSI,
                            aktif=database.katalog_aktif())
+
+
+# --------------------------------------------------- metode pengiriman -----
+@bp.route("/pengiriman", methods=["GET", "POST"])
+@helpers.feature_required("pengiriman_metode")
+def pengiriman():
+    """Aktifkan / nonaktifkan metode penyerahan barang di seluruh panel."""
+    if request.method == "POST":
+        dipilih = [label for key, label, _ket in database.PENGIRIMAN_METODE
+                   if request.form.get(key)]
+        if not dipilih:
+            flash("Minimal satu metode pengiriman harus tetap aktif.", "danger")
+            return redirect(url_for("admin.pengiriman"))
+        for key, _label, _ket in database.PENGIRIMAN_METODE:
+            database.set_setting(key, "1" if request.form.get(key) else "0")
+        flash("Metode pengiriman diperbarui: %s." % ", ".join(dipilih), "success")
+        return redirect(url_for("admin.pengiriman"))
+    return render_template("admin/pengiriman.html", metode=database.PENGIRIMAN_METODE,
+                           aktif=database.pengiriman_aktif())
+
+
+# ---------------------------------------------------- jam operasional ------
+@bp.route("/jam-operasional", methods=["GET", "POST"])
+@helpers.feature_required("jam_operasional")
+def jam_operasional():
+    """Panel jam layanan harian dan pengaturan same day delivery."""
+    if request.method == "POST":
+        jadwal = {}
+        for key, label in database.HARI:
+            if "jam_buka_" + key not in request.form and "jam_tutup_" + key not in request.form:
+                continue
+            buka = request.form.get("jam_buka_" + key, "").strip()
+            tutup = request.form.get("jam_tutup_" + key, "").strip()
+            if not _jam_valid(buka) or not _jam_valid(tutup):
+                flash("Format jam hari %s tidak valid (contoh 07:00)." % label, "danger")
+                return redirect(url_for("admin.jam_operasional"))
+            jadwal[key] = (buka, tutup)
+        batas = request.form.get("sameday_batas_jam", "14:00").strip()
+        if not _jam_valid(batas):
+            flash("Batas jam same day delivery tidak valid.", "danger")
+            return redirect(url_for("admin.jam_operasional"))
+        for key, (buka, tutup) in jadwal.items():
+            database.set_setting("jam_buka_" + key, buka)
+            database.set_setting("jam_tutup_" + key, tutup)
+        database.set_setting("sameday_aktif", "1" if request.form.get("sameday_aktif") else "0")
+        database.set_setting("sameday_batas_jam", batas)
+        hari = [key for key, _label in database.HARI
+                if key in request.form.getlist("sameday_hari")]
+        database.set_setting("sameday_hari", json.dumps(hari))
+        database.set_setting("sameday_info", request.form.get("sameday_info", "").strip())
+        flash("Jam operasional dan same day delivery disimpan.", "success")
+        return redirect(url_for("admin.jam_operasional"))
+    return render_template(
+        "admin/jam_operasional.html",
+        hari=database.HARI,
+        jam=database.jam_dari(database.all_settings()),
+        sameday_aktif=database.get_setting("sameday_aktif", "1") == "1",
+        sameday_batas=database.get_setting("sameday_batas_jam", "14:00"),
+        sameday_hari=database.sameday_hari(),
+        sameday_info=database.get_setting("sameday_info", ""))
+
+
+def _jam_valid(nilai):
+    try:
+        datetime.strptime(nilai, "%H:%M")
+    except ValueError:
+        return False
+    return True
+
+
+# ------------------------------------------------------- menu publik ------
+@bp.route("/menu-publik", methods=["GET", "POST"])
+@helpers.feature_required("menu_publik")
+def menu_publik():
+    """Tampilkan / sembunyikan menu di halaman depan website."""
+    if request.method == "POST":
+        for key, _label, _ket in database.MENU_PUBLIK:
+            database.set_setting(key, "1" if request.form.get(key) else "0")
+        flash("Menu halaman depan diperbarui.", "success")
+        return redirect(url_for("admin.menu_publik"))
+    return render_template("admin/menu_publik.html", daftar_menu=database.MENU_PUBLIK,
+                           aktif=database.menu_publik())
 
 
 @bp.route("/rekening", methods=["GET", "POST"])

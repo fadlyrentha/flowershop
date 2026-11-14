@@ -27,20 +27,22 @@
     </button>
     <div class="collapse navbar-collapse" id="navMain">
       <ul class="navbar-nav ms-auto align-items-lg-center gap-lg-1">
-        {% if katalog.katalog_produk %}
+        {% if menu_publik.nav_katalog and katalog.katalog_produk %}
         <li class="nav-item"><a class="nav-link rf-nav-link" href="{{ url_for('public.index') }}#katalog">Katalog</a></li>
         {% endif %}
-        {% if katalog.katalog_stok %}
+        {% if menu_publik.nav_stok and katalog.katalog_stok %}
         <li class="nav-item"><a class="nav-link rf-nav-link" href="{{ url_for('public.index') }}#stok">Stok</a></li>
         {% endif %}
-        {% if katalog.katalog_testimoni %}
+        {% if menu_publik.nav_testimoni and katalog.katalog_testimoni %}
         <li class="nav-item"><a class="nav-link rf-nav-link" href="{{ url_for('public.index') }}#testimoni">Testimoni</a></li>
         {% endif %}
-        {% if katalog.katalog_jam %}
+        {% if menu_publik.nav_jam and katalog.katalog_jam %}
         <li class="nav-item"><a class="nav-link rf-nav-link" href="{{ url_for('public.index') }}#jam">Jam Operasional</a></li>
         {% endif %}
+        {% if menu_publik.nav_lacak %}
         <li class="nav-item"><a class="nav-link rf-nav-link" href="{{ url_for('public.track') }}">Lacak</a></li>
-        {% if 'monitoring_mandiri' in features_aktif %}
+        {% endif %}
+        {% if menu_publik.nav_monitoring and 'monitoring_mandiri' in features_aktif %}
         <li class="nav-item"><a class="nav-link rf-nav-link" href="{{ url_for('public.pantau') }}">Monitoring</a></li>
         {% endif %}
         <li class="nav-item ms-lg-2">

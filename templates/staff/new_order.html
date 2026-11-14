@@ -53,9 +53,11 @@
             <textarea name="alamat" id="alamatPel" class="form-control" rows="2"></textarea>
           </div>
           <div class="col-md-6">
-            <label class="form-label small fw-semibold">Cara penerimaan</label>
+            <label class="form-label small fw-semibold">Cara pengiriman</label>
             <select name="pengiriman" class="form-select" id="modeKirim">
-              <option value="Dikirim">Dikirim (kurir)</option>
+              {% for metode in pengiriman_list %}
+              <option value="{{ metode }}">{{ metode }}</option>
+              {% endfor %}
               <option value="Diambil">Diambil di toko</option>
             </select>
           </div>
@@ -130,7 +132,7 @@ function recalc() {
     if (harga) { subtotal += line; lines.push(`${opt.text.split(' · ')[0]} × ${qty}`); }
   });
   const mode = document.getElementById('modeKirim').value;
-  const ongkir = (subtotal >= 500000 || mode === 'Diambil' || subtotal === 0) ? 0 : 25000;
+  const ongkir = (subtotal >= 500000 || mode === 'Diambil' || mode === 'COD' || subtotal === 0) ? 0 : 25000;
   document.getElementById('subtotal').textContent = rupiah(subtotal);
   document.getElementById('ongkir').textContent = rupiah(ongkir);
   document.getElementById('total').textContent = rupiah(subtotal + ongkir);
