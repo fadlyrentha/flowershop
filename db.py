@@ -357,6 +357,9 @@ DEFAULT_SETTINGS = {
     "backup_jadwal": "off",
     "backup_terakhir": "",
     "restore_terakhir": "",
+    "update_terakhir": "",
+    "update_cek_terakhir": "",
+    "update_versi_github": "",
     "format_nomor_order": "INV{YYYY}{MM}{DD}-{SEQ:4}",
     "format_nomor_faktur": "FK{YYYY}{MM}{DD}-{SEQ:4}",
     "format_nomor_invoice": "INV{YYYY}{MM}{DD}-{SEQ:4}",
@@ -1110,7 +1113,7 @@ BASE_FEATURES = {
         "notifikasi", "label", "konfirmasi_order", "format_nomor", "monitoring",
         "monitoring_harian", "monitoring_mandiri", "ganti_produk", "template_invoice",
         "backup", "katalog_seksi", "rekening", "reset",
-        "pengiriman_metode", "jam_operasional", "menu_publik",
+        "pengiriman_metode", "jam_operasional", "menu_publik", "update",
     ],
 }
 

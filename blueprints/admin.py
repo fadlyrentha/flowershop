@@ -1,6 +1,7 @@
 """Halaman administrator: CMS beranda, pengaturan situs, staff, hak akses."""
 import json
 import os
+import tempfile
 import time
 import uuid
 from datetime import datetime
@@ -11,6 +12,8 @@ from werkzeug.security import generate_password_hash
 
 import db as database
 import helpers
+import version
+import updater
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -64,6 +67,7 @@ FEATURE_LABELS = {
     "pengiriman_metode": "Metode Pengiriman",
     "jam_operasional": "Jam Operasional & Same Day",
     "menu_publik": "Menu Halaman Depan",
+    "update": "Pembaruan Aplikasi",
 }
 
 
@@ -77,7 +81,8 @@ STAFF_ONLY = ("accounts", "account_delete", "permissions", "settings", "dashboar
               "nomor_format", "invoice_template", "invoice_template_delete_design",
               "backup", "backup_download", "backup_delete", "backup_upload", "backup_restore",
               "katalog", "rekening", "reset",
-              "pengiriman", "jam_operasional", "menu_publik")
+              "pengiriman", "jam_operasional", "menu_publik",
+              "update", "update_cek", "update_online", "update_upload")
 
 
 @bp.before_request
@@ -638,6 +643,101 @@ def backup_delete(nama):
     else:
         flash("Berkas backup tidak ditemukan.", "warning")
     return redirect(url_for("admin.backup"))
+
+
+# --------------------------------------------------------------- update ----
+def _catat_hasil_update(ringkas):
+    """Simpan jejak waktu pembaruan terakhir."""
+    if not ringkas.get("berhasil"):
+        return
+    # Migrasi skema baru berjalan sendiri saat proses dimulai ulang
+    # (create_app memanggil init_db), jadi tidak perlu dijalankan di sini.
+    database.set_setting("update_terakhir", database.now())
+
+
+@bp.route("/update")
+@helpers.feature_required("update")
+def update():
+    return render_template(
+        "admin/update.html",
+        sekarang=updater.versi_sekarang(),
+        repo=version.REPO,
+        cabang=version.CABANG,
+        repo_url="https://github.com/%s" % version.REPO,
+        versi_github=database.get_setting("update_versi_github", ""),
+        cek_terakhir=database.get_setting("update_cek_terakhir", ""),
+        update_terakhir=database.get_setting("update_terakhir", ""),
+        bisa_tulis=updater.bisa_menulis(),
+        perintah_server=updater.perintah_server(),
+        app_dir=updater.ROOT)
+
+
+@bp.route("/update/cek", methods=["POST"])
+@helpers.feature_required("update")
+def update_cek():
+    """Bandingkan versi terpasang dengan versi terbaru di GitHub."""
+    hasil = updater.cek_github()
+    database.set_setting("update_cek_terakhir", database.now())
+    if hasil["terbaru"]:
+        database.set_setting("update_versi_github", hasil["terbaru"])
+        if hasil["ada_baru"]:
+            flash(hasil["pesan"], "warning")
+        else:
+            flash(hasil["pesan"], "success")
+    else:
+        flash(hasil["pesan"] or "Versi GitHub tidak dapat dibaca.", "danger")
+    return redirect(url_for("admin.update"))
+
+
+@bp.route("/update/online", methods=["POST"])
+@helpers.feature_required("update")
+def update_online():
+    """Unduh rilis terbaru dari GitHub lalu pasang di atas kode saat ini."""
+    if not updater.bisa_menulis():
+        flash("Folder aplikasi tidak dapat ditulis proses web. Di server, "
+              "jalankan: %s" % updater.perintah_server(), "danger")
+        return redirect(url_for("admin.update"))
+    ringkas = updater.pasang_online()
+    _catat_hasil_update(ringkas)
+    if ringkas["berhasil"]:
+        flash("Pembaruan online selesai: %s Nyalakan ulang aplikasi/layanan agar "
+              "kode baru dipakai sepenuhnya." % ringkas["pesan"], "success")
+    else:
+        flash("Pembaruan online gagal: %s" % ringkas["pesan"], "danger")
+    return redirect(url_for("admin.update"))
+
+
+@bp.route("/update/unggah", methods=["POST"])
+@helpers.feature_required("update")
+def update_upload():
+    """Pasang pembaruan dari berkas .zip yang diunggah administrator."""
+    if not updater.bisa_menulis():
+        flash("Folder aplikasi tidak dapat ditulis proses web. Di server, "
+              "jalankan: %s" % updater.perintah_server(), "danger")
+        return redirect(url_for("admin.update"))
+    berkas = request.files.get("berkas")
+    if not berkas or not berkas.filename:
+        flash("Pilih berkas pembaruan (.zip) terlebih dahulu.", "danger")
+        return redirect(url_for("admin.update"))
+    if not berkas.filename.lower().endswith(".zip"):
+        flash("Berkas pembaruan harus berupa arsip .zip berisi folder aplikasi.", "danger")
+        return redirect(url_for("admin.update"))
+    # Arsip disimpan di folder sementara di luar folder aplikasi.
+    fd, path = tempfile.mkstemp(prefix="rasty-update-", suffix=".zip")
+    os.close(fd)
+    try:
+        berkas.save(path)
+        ringkas = updater.pasang_dari_zip(path)
+    finally:
+        if os.path.isfile(path):
+            os.remove(path)
+    _catat_hasil_update(ringkas)
+    if ringkas["berhasil"]:
+        flash("Pembaruan dari berkas selesai: %s Nyalakan ulang aplikasi/layanan agar "
+              "kode baru dipakai sepenuhnya." % ringkas["pesan"], "success")
+    else:
+        flash("Pembaruan dari berkas gagal: %s" % ringkas["pesan"], "danger")
+    return redirect(url_for("admin.update"))
 
 
 @bp.route("/notifikasi")

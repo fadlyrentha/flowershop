@@ -6,6 +6,7 @@ from flask import Flask, render_template, send_from_directory, session
 
 import db as database
 import helpers
+import updater
 
 # Cek jadwal backup paling sering sekali per jam agar tidak membebani tiap request.
 _BACKUP_CHECK = {"at": 0.0}
@@ -126,6 +127,7 @@ def create_app():
             "toko_buka": database.toko_buka(settings),
             "sameday_sekarang": database.sameday_tersedia(settings),
             "wa_link": helpers.wa_link,
+            "APP_VERSION": updater.versi_sekarang(),
         }
 
     @app.before_request

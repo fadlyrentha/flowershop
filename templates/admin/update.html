@@ -1,0 +1,124 @@
+{% extends "panel_base.html" %}
+{% block title %}Pembaruan Aplikasi{% endblock %}
+{% block heading %}Pembaruan Aplikasi{% endblock %}
+{% block subheading %}Perbarui kode aplikasi dari GitHub atau dari berkas, dan lihat versi terpasang{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-lg-5">
+    <div class="rf-card p-3 p-md-4 h-100">
+      <h6 class="fw-bold mb-3">Versi Aplikasi</h6>
+      <div class="d-flex align-items-baseline gap-2 mb-2">
+        <span class="display-6 fw-bold text-rf">{{ sekarang }}</span>
+        <span class="small text-muted">terpasang</span>
+      </div>
+      <table class="table table-sm mb-0">
+        <tbody>
+          <tr>
+            <td class="small text-muted">Versi di GitHub</td>
+            <td class="small fw-semibold">
+              {% if versi_github %}
+                {{ versi_github }}
+                {% if versi_github == sekarang %}
+                  <span class="badge bg-success-subtle text-success-emphasis ms-1">terbaru</span>
+                {% else %}
+                  <span class="badge bg-warning-subtle text-warning-emphasis ms-1">beda</span>
+                {% endif %}
+              {% else %}
+                <span class="text-muted">belum diperiksa</span>
+              {% endif %}
+            </td>
+          </tr>
+          <tr><td class="small text-muted">Repositori</td>
+              <td class="small"><a href="{{ repo_url }}" target="_blank" rel="noopener">{{ repo }}</a></td></tr>
+          <tr><td class="small text-muted">Cabang</td><td class="small fw-semibold">{{ cabang }}</td></tr>
+          <tr><td class="small text-muted">Cek terakhir</td>
+              <td class="small">{{ cek_terakhir or '—' }}</td></tr>
+          <tr><td class="small text-muted">Update terakhir</td>
+              <td class="small">{{ update_terakhir or '—' }}</td></tr>
+        </tbody>
+      </table>
+      <form method="post" action="{{ url_for('admin.update_cek') }}" class="mt-3">
+        <button class="btn btn-outline-rf btn-sm">
+          <i class="bi bi-cloud-check me-1"></i> Periksa Versi di GitHub
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    <div class="rf-card p-3 p-md-4 h-100">
+      <h6 class="fw-bold mb-2">Pembaruan Online (GitHub)</h6>
+      <p class="small text-muted mb-3">
+        Mengunduh cabang <code>{{ cabang }}</code> dari <code>{{ repo }}</code> lalu menyalin
+        berkas kode ke folder aplikasi. Database, unggahan, backup, dan konfigurasi
+        <strong>tidak tersentuh</strong>. Setelah selesai, nyatakan ulang layanan agar versi
+        baru dipakai sepenuhnya.
+      </p>
+      {% if bisa_tulis %}
+      <form method="post" action="{{ url_for('admin.update_online') }}"
+            onsubmit="return confirm('Unduh dan pasang versi terbaru dari GitHub sekarang?')">
+        <button class="btn btn-primary btn-sm">
+          <i class="bi bi-cloud-arrow-down me-1"></i> Perbarui dari GitHub
+        </button>
+      </form>
+      {% else %}
+      <div class="alert alert-warning py-2 small mb-2">
+        <i class="bi bi-lock me-1"></i>
+        Folder aplikasi (<code>{{ app_dir }}</code>) hanya-baca bagi proses web, jadi pembaruan
+        dari panel tidak dapat menulis. Di server, jalankan perintah berikut lewat SSH:
+      </div>
+      <pre class="bg-dark text-light p-2 rounded small mb-2"><code>cd {{ app_dir }}
+{{ perintah_server }}</code></pre>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="rf-card p-3 p-md-4 mb-3">
+  <h6 class="fw-bold mb-2"><i class="bi bi-file-earmark-zip me-1 text-rf"></i>Pembaruan dari Berkas (.zip)</h6>
+  <p class="small text-muted mb-3">
+    Pakai cara ini bila server tidak punya akses internet. Siapkan arsip <code>.zip</code>
+    berisi folder aplikasi (ada <code>app.py</code> di dalamnya) — misalnya hasil
+    <em>Download ZIP</em> dari GitHub. Database, unggahan, backup, dan konfigurasi tidak
+    tersentuh. Berkas yang tidak ada di arsip dibiarkan seperti semula.
+  </p>
+  <form method="post" action="{{ url_for('admin.update_upload') }}" enctype="multipart/form-data"
+        class="row g-2 align-items-end"
+        onsubmit="return confirm('Pasang pembaruan dari berkas ini? Kode aplikasi akan diperbarui (data toko tidak diubah).')">
+    <div class="col-md-8">
+      <label class="form-label small fw-semibold">Berkas pembaruan (.zip)</label>
+      <input type="file" name="berkas" class="form-control form-control-sm" accept=".zip" required>
+      <div class="form-text">Maksimal 32 MB (batas unggah aplikasi).</div>
+    </div>
+    <div class="col-md-4">
+      <button class="btn btn-outline-rf w-100" {% if not bisa_tulis %}disabled{% endif %}>
+        <i class="bi bi-upload me-1"></i> Pasang Pembaruan
+      </button>
+    </div>
+  </form>
+</div>
+
+<div class="rf-card p-3 p-md-4">
+  <h6 class="fw-bold mb-2"><i class="bi bi-shield-check me-1 text-rf"></i>Yang Aman dan yang Perlu Diingat</h6>
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="small fw-semibold mb-1">Tidak pernah diubah pembaruan</div>
+      <ul class="small text-muted mb-0 ps-3">
+        <li>Database toko (<code>*.db</code>) beserta WAL/SHM</li>
+        <li>Folder unggahan (<code>static/uploads/</code> atau folder data server)</li>
+        <li>Folder <code>backups/</code> dan berkas konfigurasi</li>
+        <li>Virtualenv (<code>.venv/</code>) dan berkas log</li>
+      </ul>
+    </div>
+    <div class="col-md-6">
+      <div class="small fw-semibold mb-1">Langkah aman</div>
+      <ul class="small text-muted mb-0 ps-3">
+        <li>Buat <strong>Backup Data</strong> sebelum memperbarui.</li>
+        <li>Perbarui saat toko sedang sepi.</li>
+        <li>Setelah selesai, nyatakan ulang layanan (restart) agar kode baru dipakai.</li>
+        <li>Bila versi baru menambah dependensi, jalankan ulang pemasang di server.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

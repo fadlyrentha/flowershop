@@ -42,6 +42,57 @@ scp -r user@IP-SERVER:/var/lib/rasty-florist/backups ./backup-rasty
 
 ## 2. Pembaruan kode aplikasi (versi baru)
 
+### 2.0 Cara tercepat: menu Pembaruan Aplikasi di panel
+
+Administrator → **Pembaruan Aplikasi** menyediakan tiga hal:
+
+- **Lihat versi** — versi yang terpasang dan versi terbaru di GitHub, lengkap dengan
+  waktu pemeriksaan terakhir.
+- **Perbarui dari GitHub** — mengunduh cabang terpantau (`version.py` → `CABANG`)
+  dan memasangnya. Tidak perlu SSH.
+- **Perbarui dari berkas (.zip)** — untuk server tanpa akses internet.
+
+> Catatan: kode di `/opt/rasty-florist` dimiliki **root** dan hanya-baca bagi pengguna
+> layanan, jadi tombol pembaruan **tidak dapat menulis** di server hasil
+> `install_ubuntu.sh`. Halaman akan menampilkan perintah SSH yang harus dijalankan.
+> Ini disengaja: proses web tidak diberi hak menulis ke kode produksi.
+> Gunakan **bagian 2.1** di bawah, atau longgarkan hak tulis folder bila Anda
+> memang ingin memperbarui dari browser.
+
+### 2.0b Cara resmi di server: satu perintah
+
+```bash
+sudo bash /opt/rasty-florist/installer/update_ubuntu.sh --online
+```
+
+Yang dilakukan skrip ini, berurutan:
+
+1. **Backup database** lewat `backup_ubuntu.sh` (gagal backup = pembaruan dibatalkan);
+2. **Pasang kode baru** — mengunduh dari GitHub, atau memakai `--zip`/`--sumber`;
+3. **Rapikan hak akses** folder aplikasi (`root:rasty`, hanya-baca untuk layanan);
+4. **Pasang dependensi** dari `requirements.txt` bila ada yang baru;
+5. **Migrasi database** lewat `installer/init_db.py`;
+6. **Nyalakan ulang** layanan dan laporkan statusnya.
+
+Database, folder unggahan, folder backup, dan `/etc/rasty-florist/rasty.env`
+**tidak pernah tersentuh**. Berkas yang tidak ada di sumber juga tidak dihapus.
+
+Pilihan lain:
+
+```bash
+# dari berkas zip yang sudah diunggah ke server
+sudo bash installer/update_ubuntu.sh --zip /tmp/rasty-florist.zip
+
+# dari folder hasil git clone / scp
+sudo bash installer/update_ubuntu.sh --sumber /tmp/rasty-florist
+
+# hitung saja tanpa menulis apa pun (aman dicoba)
+sudo bash installer/update_ubuntu.sh --online --dry-run
+
+# pasang kode, tetapi jangan nyalakan ulang layanan
+sudo bash installer/update_ubuntu.sh --online --tanpa-restart
+```
+
 ### 2.1 Kirim kode baru ke server
 
 Pilih salah satu sesuai cara Anda memperoleh kode.

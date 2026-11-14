@@ -347,6 +347,7 @@ cat > "/etc/sudoers.d/${APP_NAME}" <<EOF
 %sudo ALL=(root) NOPASSWD: ${SYSTEMCTL_BIN} status ${SERVICE_NAME}
 %sudo ALL=(root) NOPASSWD: ${SYSTEMCTL_BIN} reload ${SERVICE_NAME}
 %sudo ALL=(root) NOPASSWD: ${BASH_BIN} ${APP_DIR}/installer/backup_ubuntu.sh
+%sudo ALL=(root) NOPASSWD: ${BASH_BIN} ${APP_DIR}/installer/update_ubuntu.sh *
 %sudo ALL=(root) NOPASSWD: ${BASH_BIN} ${APP_DIR}/installer/set_sandi_ubuntu.sh *
 %sudo ALL=(root) NOPASSWD: ${BASH_BIN} ${APP_DIR}/installer/setup_nginx.sh *
 EOF

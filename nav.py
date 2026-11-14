@@ -160,6 +160,7 @@ MENUS = {
             ("Akun Staff", "admin.accounts", "akun_staff", "person-badge"),
             ("Hak Akses", "admin.permissions", "hak_akses", "shield-lock"),
             ("Backup Data", "admin.backup", "backup", "database-down"),
+            ("Pembaruan Aplikasi", "admin.update", "update", "cloud-arrow-down"),
             ("Reset Pengaturan", "admin.reset", "reset", "arrow-counterclockwise"),
             ("Notifikasi", "admin.notifications", "notifikasi", "bell"),
         ]),

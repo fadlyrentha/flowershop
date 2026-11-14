@@ -201,7 +201,11 @@ faktur/invoice), pembayaran,
 laporan, checklist QC, pengiriman · Akun staff · **Master hak akses**
 (mengaktifkan/menonaktifkan fitur per peran, termasuk menyalakan/mematikan
 **Monitoring Mandiri** untuk tiap peran) · **Backup data** (manual + otomatis
-harian/mingguan/bulanan/tahunan, unduh & hapus berkas) · **Reset Pengaturan** · Notifikasi.
+harian/mingguan/bulanan/tahunan, unduh & hapus berkas) · **Pembaruan Aplikasi**
+(cek versi terpasang vs versi di GitHub, perbarui online dari GitHub atau dari berkas
+`.zip`, dengan database/unggahan/backup/konfigurasi yang tidak pernah tersentuh) ·
+**Reset Pengaturan** · Notifikasi. Versi aplikasi juga tampil di sidebar panel dan
+footer website.
 
 Menu **Reset Pengaturan** mengembalikan aplikasi/website ke pengaturan default per bagian:
 Pengaturan Website, Kolom Katalog Beranda, Isi Beranda (CMS), dan Hak Akses Peran.
@@ -226,8 +230,10 @@ rasty-florist/
 │   ├── install_ubuntu.sh    # pemasang Ubuntu: paket, pengguna, venv, database, systemd
 │   ├── setup_nginx.sh       # vhost nginx + HTTPS Let's Encrypt
 │   ├── backup_ubuntu.sh     # backup database + unggahan, dipangkas otomatis
+│   ├── update_ubuntu.sh     # perbarui kode di server (backup → pasang → migrasi → restart)
 │   ├── set_sandi_ubuntu.sh  # kelola akun di server (daftar/sandi/aktif-nonaktif)
 │   ├── uninstall_ubuntu.sh  # cabut pemasangan (data dipertahankan secara bawaan)
+│   ├── update.py            # pasang kode baru dari folder/zip/GitHub (lintas platform)
 │   └── init_db.py           # inisialisasi database dari variabel lingkungan
 ├── jalankan-server.bat # peluncur server produksi Windows (dibuat oleh pemasang)
 ├── jalankan_server.py  # baca rasty.conf lalu jalankan server (waitress)
@@ -235,6 +241,8 @@ rasty-florist/
 ├── wsgi.py             # entry point gunicorn (Linux)
 ├── rasty.conf          # konfigurasi server Windows (dibuat oleh pemasang)
 ├── app.py              # factory aplikasi, context processor, error handler
+├── version.py          # nomor versi aplikasi + repositori GitHub sumber pembaruan
+├── updater.py          # cek versi, unduh GitHub, pasang kode baru (menjaga data toko)
 ├── db.py               # skema SQLite, seed data, pengaturan situs, hak akses
 ├── helpers.py          # auth, dekorator hak akses, upload, notifikasi, transaksi pesanan
 ├── pdf.py              # penulis berkas PDF mandiri (tanpa pustaka tambahan)
@@ -260,6 +268,7 @@ rasty-florist/
 ├── smoke_test.py       # uji semua rute GET per peran
 ├── flow_test.py        # uji alur pesanan → QC → pembayaran → laporan
 ├── install_test.py     # uji instalasi bersih (tanpa data contoh)
+├── update_test.py      # uji pembaruan aplikasi (versi, proteksi data, zip)
 └── requirements.txt    # Flask + waitress
 ```
 
@@ -269,6 +278,7 @@ rasty-florist/
 python smoke_test.py    # semua rute GET untuk 7 peran (butuh data contoh)
 python flow_test.py     # alur transaksi end-to-end (butuh data contoh)
 python install_test.py  # instalasi bersih tanpa data contoh
+python update_test.py   # pembaruan aplikasi, tanpa jaringan
 ```
 
 Di server Ubuntu:
