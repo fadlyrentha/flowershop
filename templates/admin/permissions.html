@@ -1,0 +1,75 @@
+{% extends "panel_base.html" %}
+{% block title %}Hak Akses{% endblock %}
+{% block heading %}Master Menu Hak Akses{% endblock %}
+{% block subheading %}Aktifkan atau nonaktifkan fitur untuk setiap peran{% endblock %}
+{% block content %}
+<ul class="nav nav-pills flex-wrap gap-2 mb-3">
+  {% for r in ROLE_ORDER %}
+  <li class="nav-item">
+    <a class="nav-link btn-sm {{ 'active bg-rf text-white' if role == r else 'bg-white text-dark' }}"
+       href="{{ url_for('admin.permissions', role=r) }}">{{ ROLE_LABEL[r] }}</a>
+  </li>
+  {% endfor %}
+</ul>
+
+<form method="post">
+  <input type="hidden" name="role" value="{{ role }}">
+  <div class="rf-card p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+      <div>
+        <h6 class="fw-bold mb-0">Fitur untuk {{ ROLE_LABEL[role] }}</h6>
+        <div class="small text-muted">Centang fitur yang boleh diakses peran ini.</div>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-sm btn-light" onclick="toggleAll(true)">Pilih semua</button>
+        <button type="button" class="btn btn-sm btn-light" onclick="toggleAll(false)">Kosongkan</button>
+        <button class="btn btn-sm btn-primary">Simpan</button>
+      </div>
+    </div>
+
+    <div class="row g-2">
+      {% for key, label in FEATURE_LABELS.items() %}
+      <div class="col-md-4 col-lg-3">
+        <label class="d-flex align-items-center gap-2 border rounded-3 p-2 small h-100">
+          <input class="form-check-input mt-0 feature-cb" type="checkbox" name="feature" value="{{ key }}"
+                 {% if active.get(key) %}checked{% endif %}>
+          <span>{{ label }}</span>
+        </label>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</form>
+
+<div class="rf-card p-4 mt-3">
+  <h6 class="fw-bold mb-3">Ringkasan fitur aktif per peran</h6>
+  <div class="table-responsive">
+    <table class="table table-rf mb-0 align-middle">
+      <thead><tr><th>Peran</th><th class="text-center">Fitur Aktif</th><th>Proporsi</th></tr></thead>
+      <tbody>
+        {% for r in ROLE_ORDER %}
+        {% set s = summary.get(r) %}
+        <tr>
+          <td class="fw-semibold">{{ ROLE_LABEL[r] }}</td>
+          <td class="text-center">{{ (s.aktif or 0) if s else 0 }} / {{ s.total if s else 0 }}</td>
+          <td>
+            <div class="progress" style="height:6px">
+              {% set pct = ((s.aktif or 0) / s.total * 100) if s and s.total else 0 %}
+              <div class="progress-bar bg-rf" style="width:{{ pct }}%"></div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleAll(state) {
+  document.querySelectorAll('.feature-cb').forEach(cb => cb.checked = state);
+}
+</script>
+{% endblock %}

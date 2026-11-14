@@ -1,0 +1,143 @@
+{% extends "panel_base.html" %}
+{% block title %}Keluhan{% endblock %}
+{% block heading %}Mengelola Keluhan Pelanggan{% endblock %}
+{% block subheading %}Tambah, ubah, hapus, dan cetak data keluhan{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3">
+  <button class="btn btn-primary btn-sm" onclick="openKeluhan()"><i class="bi bi-plus-lg me-1"></i> Tambah Keluhan</button>
+  <a class="btn btn-outline-rf btn-sm" target="_blank" href="{{ url_for('finance.complaints_print') }}">
+    <i class="bi bi-printer me-1"></i> Cetak Daftar
+  </a>
+</div>
+
+<div class="rf-card p-0 overflow-hidden">
+  <div class="table-responsive">
+    <table class="table table-rf align-middle mb-0">
+      <thead><tr><th>Kode</th><th>Pelanggan</th><th>Kategori</th><th>Subjek</th>
+        <th class="text-end">Nominal</th><th>Kompensasi</th><th>Bukti</th><th>Status</th>
+        <th class="text-end">Aksi</th></tr></thead>
+      <tbody>
+        {% for c in rows %}
+        <tr>
+          <td class="small fw-semibold">{{ c.kode }}</td>
+          <td class="small">{{ c.nama_pelanggan }}</td>
+          <td class="small">{{ c.kategori }}</td>
+          <td class="small">{{ c.subjek }}<br><span class="text-muted">{{ c.isi[:60] }}{% if c.isi|length > 60 %}...{% endif %}</span></td>
+          <td class="text-end small">{{ rupiah(c.nominal) }}</td>
+          <td class="small">{{ c.kompensasi }}</td>
+          <td>
+            <div class="d-flex gap-1">
+              {% if c.foto %}<a href="{{ url_for('static', filename='uploads/' ~ c.foto) }}" target="_blank" class="btn btn-sm btn-light"><i class="bi bi-image"></i></a>{% endif %}
+              {% if c.video %}<a href="{{ url_for('static', filename='uploads/' ~ c.video) }}" target="_blank" class="btn btn-sm btn-light"><i class="bi bi-camera-video"></i></a>{% endif %}
+              {% if not c.foto and not c.video %}<span class="small text-muted">-</span>{% endif %}
+            </div>
+          </td>
+          <td><span class="rf-chip {{ 'gray' if c.status == 'Baru' }}">{{ c.status }}</span></td>
+          <td class="text-end text-nowrap">
+            <button class="btn btn-sm btn-light" onclick='openKeluhan({{ c|tojson }})'><i class="bi bi-pencil"></i></button>
+            <form method="post" action="{{ url_for('finance.complaint_delete', cid=c.id) }}" class="d-inline"
+                  onsubmit="return confirm('Hapus keluhan {{ c.kode }}?')">
+              <button class="btn btn-sm btn-light text-danger"><i class="bi bi-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="9"><div class="rf-empty">Belum ada keluhan.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal fade" id="kelModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <form class="modal-content" method="post">
+      <div class="modal-header">
+        <h6 class="modal-title fw-bold" id="kelTitle">Tambah Keluhan</h6>
+        <button class="btn-close" data-bs-dismiss="modal" type="button"></button>
+      </div>
+      <div class="modal-body row g-3">
+        <input type="hidden" name="id" id="k_id">
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Pelanggan / Toko</label>
+          <select name="user_id" id="k_user" class="form-select">
+            <option value="">— Pelanggan umum —</option>
+            {% for c in customers %}
+            <option value="{{ c.id }}" data-nama="{{ c.nama }}">{{ c.nama }} ({{ c.username }})</option>
+            {% endfor %}
+          </select>
+          <div class="form-text">Nama pelanggan terisi otomatis dari pilihan ini.</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Nama pelanggan / toko</label>
+          <input name="nama_pelanggan" id="k_nama" class="form-control">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Kategori keluhan</label>
+          <select name="kategori" id="k_kategori" class="form-select">
+            {% for k in kategori_list %}<option value="{{ k }}">{{ k }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Status</label>
+          <select name="status" id="k_status" class="form-select">
+            {% for s in status_list %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Pilihan kompensasi</label>
+          <select name="kompensasi" id="k_kompensasi" class="form-select">
+            {% for k in kompensasi_list %}<option value="{{ k }}">{{ k }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Nominal (Rp)</label>
+          <input type="number" name="nominal" id="k_nominal" class="form-control" min="0" value="0">
+          <div class="form-text">Isi 0 bila tidak ada kompensasi uang.</div>
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Subjek</label>
+          <input name="subjek" id="k_subjek" class="form-control" required>
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Isi keluhan</label>
+          <textarea name="isi" id="k_isi" class="form-control" rows="3"></textarea>
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Balasan</label>
+          <textarea name="tanggapan" id="k_tanggapan" class="form-control" rows="2"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openKeluhan(data) {
+  document.getElementById('kelTitle').textContent = data ? 'Ubah Keluhan' : 'Tambah Keluhan';
+  const set = (id, v) => document.getElementById(id).value = (v === null || v === undefined) ? '' : v;
+  set('k_id', data?.id);
+  set('k_user', data?.user_id);
+  set('k_nama', data?.nama_pelanggan);
+  set('k_kategori', data ? data.kategori : 'Lainnya');
+  set('k_status', data ? data.status : 'Baru');
+  set('k_kompensasi', data ? data.kompensasi : 'Tidak Ada');
+  set('k_nominal', data?.nominal ?? 0);
+  set('k_subjek', data?.subjek);
+  set('k_isi', data?.isi);
+  set('k_tanggapan', data?.tanggapan);
+  new bootstrap.Modal(document.getElementById('kelModal')).show();
+}
+
+document.getElementById('k_user').addEventListener('change', e => {
+  const opt = e.target.options[e.target.selectedIndex];
+  if (e.target.value) document.getElementById('k_nama').value = opt.dataset.nama || '';
+});
+</script>
+{% endblock %}

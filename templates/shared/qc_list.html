@@ -1,0 +1,44 @@
+{% extends "public/base.html" %}
+{% block title %}Checklist QC {{ order.kode }}{% endblock %}
+{% block body %}
+<div class="container py-4">
+  <div class="d-print-none mb-3 d-flex flex-wrap gap-2">
+    <button class="btn btn-primary btn-sm" onclick="window.print()"><i class="bi bi-printer me-1"></i> Cetak Checklist</button>
+    <a class="btn btn-light btn-sm" href="javascript:history.back()">Kembali</a>
+  </div>
+  <div class="rf-card p-4">
+    <div class="d-flex justify-content-between border-bottom pb-3 mb-3">
+      <div>
+        <div class="h5 fw-bold mb-0">{{ settings.nama_toko }}</div>
+        <div class="small text-muted">Checklist Produk Quality Kontrol</div>
+      </div>
+      <div class="text-end">
+        <div class="fw-bold">{{ order.kode }}</div>
+        <div class="small text-muted">{{ order.nama_pelanggan }}</div>
+      </div>
+    </div>
+    <table class="table table-rf">
+      <thead>
+        <tr><th>#</th><th>Produk</th><th class="text-center">Qty</th><th class="text-center">Ceklis</th><th>Status</th><th>Catatan</th></tr>
+      </thead>
+      <tbody>
+        {% for i in items %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td class="fw-semibold">{{ i.nama_produk }}</td>
+          <td class="text-center">{{ i.qty }}</td>
+          <td class="text-center" style="font-size:1.1rem">☐</td>
+          <td>{{ i.qc_status }}</td>
+          <td class="small text-muted">{{ i.qc_catatan or '-' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="row small mt-5 pt-4">
+      <div class="col-4 text-center"><div class="border-top pt-1">Gudang</div></div>
+      <div class="col-4 text-center"><div class="border-top pt-1">Quality Kontrol</div></div>
+      <div class="col-4 text-center"><div class="border-top pt-1">Keuangan</div></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

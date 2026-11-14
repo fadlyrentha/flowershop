@@ -1,0 +1,46 @@
+{% extends "public/base.html" %}
+{% block title %}Laporan Stok{% endblock %}
+{% block body %}
+<div class="container py-4">
+  <div class="d-print-none mb-3 d-flex gap-2">
+    <button class="btn btn-primary btn-sm" onclick="window.print()"><i class="bi bi-printer me-1"></i> Cetak</button>
+    <a class="btn btn-light btn-sm" href="{{ url_for('finance.stock') }}">Kembali</a>
+  </div>
+  <div class="rf-card p-4">
+    <div class="border-bottom pb-3 mb-3 d-flex justify-content-between">
+      <div><div class="h5 fw-bold mb-0">{{ settings.nama_toko }}</div>
+        <div class="small text-muted">Laporan Stok & Mutasi</div></div>
+      <div class="small text-muted">{{ settings.alamat }}</div>
+    </div>
+    <h6 class="fw-bold mt-3">Posisi stok</h6>
+    <table class="table table-sm table-rf">
+      <thead><tr><th>#</th><th>Produk</th><th>Kategori</th><th class="text-end">Harga</th><th class="text-center">Stok</th><th class="text-end">Nilai Stok</th></tr></thead>
+      <tbody>
+        {% for p in products %}
+        <tr>
+          <td>{{ loop.index }}</td><td>{{ p.nama }}</td><td>{{ p.kategori }}</td>
+          <td class="text-end">{{ rupiah(p.harga) }}</td>
+          <td class="text-center">{{ p.stok }}</td>
+          <td class="text-end">{{ rupiah(p.harga * p.stok) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <h6 class="fw-bold mt-4">Riwayat mutasi</h6>
+    <table class="table table-sm table-rf">
+      <thead><tr><th>Tanggal</th><th>Produk</th><th>Jenis</th><th class="text-center">Qty</th><th>Keterangan</th></tr></thead>
+      <tbody>
+        {% for m in rows %}
+        <tr>
+          <td class="small">{{ m.created_at[:10] }}</td>
+          <td class="small">{{ m.produk }}</td>
+          <td class="small">{{ m.tipe }}</td>
+          <td class="text-center small">{{ m.qty }}</td>
+          <td class="small text-muted">{{ m.keterangan }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

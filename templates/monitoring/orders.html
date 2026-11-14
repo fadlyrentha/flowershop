@@ -1,0 +1,49 @@
+{% extends "panel_base.html" %}
+{% block title %}List Order{% endblock %}
+{% block heading %}List Order{% endblock %}
+{% block subheading %}Daftar seluruh pesanan beserta detail produk{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap gap-2 justify-content-between mb-3">
+  <form class="d-flex gap-2" method="get">
+    <input name="q" class="form-control form-control-sm" placeholder="Cari kode / nama pelanggan" value="{{ q }}">
+    <select name="status" class="form-select form-select-sm">
+      <option value="">Semua status</option>
+      {% for s in ORDER_STATUS %}<option value="{{ s }}" {% if status == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-sm btn-outline-rf">Filter</button>
+  </form>
+  <a class="btn btn-sm btn-outline-rf" href="{{ url_for('monitoring.status') }}"><i class="bi bi-kanban me-1"></i> Status Pesanan</a>
+</div>
+
+<div class="rf-card p-0 overflow-hidden">
+  <div class="table-responsive rf-scroll-x">
+    <table class="table table-rf align-middle mb-0">
+      <thead>
+        <tr><th>Kode</th><th>Pelanggan</th><th>Tanggal</th><th>Detail Produk</th><th>Status</th><th class="text-end">Aksi</th></tr>
+      </thead>
+      <tbody>
+        {% for o in rows %}
+        <tr>
+          <td class="fw-semibold small">{{ o.kode }}</td>
+          <td class="small">{{ o.nama_pelanggan }}</td>
+          <td class="small text-muted text-nowrap">{{ o.created_at[:10] }}</td>
+          <td class="small">
+            {% for it in items.get(o.id, []) %}
+            <div>{{ it.nama_produk }} <span class="text-muted">× {{ it.qty }}</span></div>
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endfor %}
+          </td>
+          <td><span class="rf-chip">{{ o.status }}</span></td>
+          <td class="text-end text-nowrap">
+            <a class="btn btn-sm btn-light" href="{{ url_for('monitoring.track', kode=o.kode) }}" title="Lacak"><i class="bi bi-geo-alt"></i></a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6"><div class="rf-empty">Tidak ada pesanan.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

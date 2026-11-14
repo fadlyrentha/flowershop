@@ -1,0 +1,30 @@
+{% extends "panel_base.html" %}
+{% block title %}Reset Pengaturan{% endblock %}
+{% block heading %}Reset ke Pengaturan Default{% endblock %}
+{% block subheading %}Kembalikan pengaturan aplikasi atau website ke bawaan{% endblock %}
+{% block content %}
+<div class="alert alert-warning d-flex gap-2 py-2 small">
+  <i class="bi bi-exclamation-triangle-fill"></i>
+  <div>
+    Backup database otomatis dibuat sebelum setiap reset, sehingga data lama masih bisa dipulihkan
+    dari menu <strong>Backup Data</strong>. Data pesanan, produk, dan pelanggan tidak pernah dihapus.
+  </div>
+</div>
+
+<div class="row g-3">
+  {% for key, label, ket in bagian %}
+  <div class="col-md-6">
+    <div class="rf-card p-4 h-100 d-flex flex-column">
+      <h6 class="fw-bold mb-2">{{ label }}</h6>
+      <p class="small text-muted flex-grow-1">{{ ket }}</p>
+      <form method="post" onsubmit="return confirm('Kembalikan {{ label }} ke pengaturan default?')">
+        <input type="hidden" name="aksi" value="{{ key }}">
+        <button class="btn btn-outline-rf btn-sm">
+          <i class="bi bi-arrow-counterclockwise me-1"></i> Reset {{ label }}
+        </button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

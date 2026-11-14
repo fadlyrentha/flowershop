@@ -1,0 +1,43 @@
+{% extends "panel_base.html" %}
+{% block title %}List Stok{% endblock %}
+{% block heading %}List Stok{% endblock %}
+{% block subheading %}Pantau ketersediaan stok seluruh produk{% endblock %}
+{% block content %}
+<form class="d-flex gap-2 mb-3" method="get">
+  <input name="q" class="form-control form-control-sm" placeholder="Cari nama / kategori produk" value="{{ q }}">
+  <button class="btn btn-sm btn-outline-rf">Cari</button>
+</form>
+
+<div class="rf-card p-0 overflow-hidden">
+  <div class="table-responsive rf-scroll-x">
+    <table class="table table-rf align-middle mb-0">
+      <thead>
+        <tr><th>Produk</th><th>Kategori</th><th class="text-end">Harga</th>
+        <th class="text-center">Stok</th><th class="text-center">Minimum</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for p in rows %}
+        <tr>
+          <td class="small fw-semibold">{{ p.nama }}</td>
+          <td class="small text-muted">{{ p.kategori }}</td>
+          <td class="text-end small">{{ rupiah(p.harga) }}</td>
+          <td class="text-center fw-semibold {{ 'text-danger' if p.stok <= p.stok_minimum }}">{{ p.stok }}</td>
+          <td class="text-center small text-muted">{{ p.stok_minimum }}</td>
+          <td>
+            {% if not p.aktif %}
+            <span class="rf-chip gray">Nonaktif</span>
+            {% elif p.stok <= p.stok_minimum %}
+            <span class="rf-chip">Stok Menipis</span>
+            {% else %}
+            <span class="rf-chip gray">Tersedia</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6"><div class="rf-empty">Tidak ada produk.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,102 @@
+{% extends "panel_base.html" %}
+{% block title %}Dashboard Keuangan{% endblock %}
+{% block heading %}Dashboard Keuangan{% endblock %}
+{% block subheading %}Ringkasan pemasukan, tagihan, dan verifikasi pembayaran{% endblock %}
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="rf-stat">
+      <div class="label">Pemasukan</div>
+      <div class="value text-success" style="font-size:1.05rem">{{ rupiah(stats.pemasukan) }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="rf-stat">
+      <div class="label">Pengeluaran</div>
+      <div class="value text-danger" style="font-size:1.05rem">{{ rupiah(stats.pengeluaran) }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="rf-stat">
+      <div class="label">Laba Bersih</div>
+      <div class="value text-rf" style="font-size:1.05rem">{{ rupiah(stats.laba) }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="rf-stat">
+      <div class="label">Tagihan Belum Lunas</div>
+      <div class="value" style="font-size:1.05rem">{{ rupiah(stats.belum_bayar) }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="rf-card p-3 p-md-4 mb-3">
+      <div class="d-flex justify-content-between mb-3">
+        <h6 class="fw-bold mb-0">Pembayaran terbaru</h6>
+        <a class="small" href="{{ url_for('finance.payments') }}">Kelola</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-rf align-middle mb-0">
+          <thead><tr><th>Metode</th><th class="text-end">Jumlah</th><th>Status</th><th>Tanggal</th></tr></thead>
+          <tbody>
+            {% for p in payments %}
+            <tr>
+              <td class="small">{{ p.metode }}</td>
+              <td class="text-end small">{{ rupiah(p.jumlah) }}</td>
+              <td><span class="rf-chip {{ 'gray' if p.status != 'Terverifikasi' }}">{{ p.status }}</span></td>
+              <td class="small text-muted">{{ p.created_at[:10] }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4"><div class="rf-empty">Belum ada pembayaran.</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="rf-card p-3 p-md-4">
+      <div class="d-flex justify-content-between mb-3">
+        <h6 class="fw-bold mb-0">Faktur terbaru</h6>
+        <a class="small" href="{{ url_for('finance.invoices') }}">Kelola</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-rf align-middle mb-0">
+          <thead><tr><th>Nomor</th><th>Pelanggan</th><th class="text-end">Total</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for i in invoices %}
+            <tr>
+              <td class="small fw-semibold">{{ i.nomor }}</td>
+              <td class="small">{{ i.nama_pelanggan }}</td>
+              <td class="text-end small">{{ rupiah(i.total) }}</td>
+              <td><span class="rf-chip {{ 'gray' if i.status != 'Lunas' }}">{{ i.status }}</span></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4"><div class="rf-empty">Belum ada faktur.</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="rf-stat d-flex gap-3 align-items-center mb-3">
+      <div class="icon"><i class="bi bi-hourglass-split"></i></div>
+      <div><div class="label">Pembayaran Menunggu Verifikasi</div><div class="value">{{ stats.verifikasi }}</div></div>
+    </div>
+    <div class="rf-stat d-flex gap-3 align-items-center mb-3">
+      <div class="icon"><i class="bi bi-clipboard-check"></i></div>
+      <div><div class="label">Order Siap Kirim (QC lolos)</div><div class="value">{{ stats.qc_siap }}</div></div>
+    </div>
+    <div class="rf-card p-3 p-md-4">
+      <h6 class="fw-bold mb-3">Aksi cepat</h6>
+      <div class="d-grid gap-2">
+        <a class="btn btn-primary" href="{{ url_for('finance.qc_list') }}"><i class="bi bi-clipboard-check me-1"></i> Ceklist Verifikasi QC</a>
+        <a class="btn btn-outline-rf" href="{{ url_for('finance.invoices') }}"><i class="bi bi-receipt me-1"></i> Buat Faktur</a>
+        <a class="btn btn-outline-rf" href="{{ url_for('finance.payments') }}"><i class="bi bi-credit-card me-1"></i> Verifikasi Pembayaran</a>
+        <a class="btn btn-outline-rf" href="{{ url_for('finance.reports') }}"><i class="bi bi-graph-up me-1"></i> Laporan Keuangan</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

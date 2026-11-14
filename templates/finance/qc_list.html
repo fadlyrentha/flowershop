@@ -1,0 +1,33 @@
+{% extends "panel_base.html" %}
+{% block title %}Checklist QC{% endblock %}
+{% block heading %}Ceklist Verifikasi Order{% endblock %}
+{% block subheading %}Hasil verifikasi produk dari Quality Kontrol{% endblock %}
+{% block content %}
+<div class="rf-card p-0 overflow-hidden">
+  <div class="table-responsive">
+    <table class="table table-rf align-middle mb-0">
+      <thead><tr><th>Kode</th><th>Pelanggan</th><th class="text-center">Item</th><th class="text-center">Lolos QC</th><th>Status</th><th class="text-end">Aksi</th></tr></thead>
+      <tbody>
+        {% for o in rows %}
+        <tr>
+          <td class="small fw-semibold">{{ o.kode }}</td>
+          <td class="small">{{ o.nama_pelanggan }}</td>
+          <td class="text-center small">{{ o.jumlah_item }}</td>
+          <td class="text-center">
+            <span class="badge {{ 'bg-success-subtle text-success-emphasis' if o.lolos == o.jumlah_item else 'bg-warning-subtle text-warning-emphasis' }}">
+              {{ o.lolos }}/{{ o.jumlah_item }}
+            </span>
+          </td>
+          <td><span class="rf-chip">{{ o.status }}</span></td>
+          <td class="text-end">
+            <a class="btn btn-sm btn-primary" href="{{ url_for('finance.qc_detail', order_id=o.id) }}">Periksa</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6"><div class="rf-empty">Belum ada order yang diverifikasi QC.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

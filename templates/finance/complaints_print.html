@@ -1,0 +1,35 @@
+{% extends "public/base.html" %}
+{% block title %}Daftar Keluhan{% endblock %}
+{% block body %}
+<div class="container py-4">
+  <div class="d-print-none mb-3 d-flex gap-2">
+    <button class="btn btn-primary btn-sm" onclick="window.print()"><i class="bi bi-printer me-1"></i> Cetak</button>
+    <a class="btn btn-light btn-sm" href="{{ url_for('finance.complaints') }}">Kembali</a>
+  </div>
+  <div class="rf-card p-4">
+    <div class="border-bottom pb-3 mb-3 d-flex justify-content-between">
+      <div><div class="h5 fw-bold mb-0">{{ settings.nama_toko }}</div>
+        <div class="small text-muted">Daftar Keluhan Pelanggan</div></div>
+      <div class="small text-muted">{{ settings.alamat }}</div>
+    </div>
+    <table class="table table-rf">
+      <thead><tr><th>#</th><th>Kode</th><th>Pelanggan</th><th>Subjek</th><th>Isi</th><th>Status</th><th>Tanggapan</th></tr></thead>
+      <tbody>
+        {% for c in rows %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td class="small">{{ c.kode }}</td>
+          <td class="small">{{ c.nama_pelanggan }}</td>
+          <td class="small fw-semibold">{{ c.subjek }}</td>
+          <td class="small">{{ c.isi }}</td>
+          <td class="small">{{ c.status }}</td>
+          <td class="small text-muted">{{ c.tanggapan }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center text-muted py-4">Belum ada data.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

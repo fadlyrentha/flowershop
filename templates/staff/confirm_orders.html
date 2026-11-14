@@ -1,0 +1,143 @@
+{% extends "panel_base.html" %}
+{% block title %}Konfirmasi Order{% endblock %}
+{% block heading %}Konfirmasi Order{% endblock %}
+{% block subheading %}Pesanan baru yang menunggu konfirmasi — produk bisa ditambah, diubah, atau dihapus bila stok tidak memenuhi{% endblock %}
+{% block content %}
+<form class="d-flex gap-2 mb-3" method="get">
+  <input name="q" class="form-control form-control-sm" placeholder="Cari kode / nama pelanggan" value="{{ q }}">
+  <button class="btn btn-sm btn-outline-rf">Cari</button>
+</form>
+
+<div class="rf-card p-0 overflow-hidden">
+  <div class="table-responsive rf-scroll-x">
+    <table class="table table-rf align-middle mb-0">
+      <thead>
+        <tr><th>Kode</th><th>Pelanggan</th><th>Tanggal</th><th>Detail Produk</th>
+        <th class="text-end">Total</th><th class="text-end">Aksi</th></tr>
+      </thead>
+      <tbody>
+        {% for o in rows %}
+        <tr>
+          <td class="fw-semibold small">{{ o.kode }}</td>
+          <td class="small">
+            {{ o.nama_pelanggan }}
+            <div class="text-muted" style="font-size:.72rem">{{ o.telepon }}</div>
+          </td>
+          <td class="small text-muted text-nowrap">{{ o.created_at[:16] }}</td>
+          <td class="small">
+            {% for it in items.get(o.id, []) %}
+            {% set sisa = stok.get(it.product_id) if it.product_id else None %}
+            <div class="d-flex flex-wrap align-items-center gap-1 mb-1">
+              <span>{{ it.nama_produk }}</span>
+              <span class="text-muted">× {{ it.qty }}</span>
+              {% if sisa is none %}
+              <span class="badge bg-danger-subtle text-danger-emphasis">Produk kosong</span>
+              {% elif sisa <= 0 %}
+              <span class="badge bg-danger-subtle text-danger-emphasis">Stok habis</span>
+              {% elif sisa < it.qty %}
+              <span class="badge bg-warning-subtle text-warning-emphasis">Stok kurang ({{ sisa }})</span>
+              {% endif %}
+              <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="modal"
+                      data-bs-target="#itemModal" onclick='isiItem({{ o.id }}, {{ it|tojson }})'
+                      title="Ubah produk"><i class="bi bi-pencil"></i></button>
+              <form method="post" action="{{ url_for('staff.confirm_item', order_id=o.id) }}"
+                    class="d-inline"
+                    onsubmit="return confirm('Hapus {{ it.nama_produk }} dari pesanan {{ o.kode }}?')">
+                <input type="hidden" name="aksi" value="hapus">
+                <input type="hidden" name="item_id" value="{{ it.id }}">
+                <button class="btn btn-sm btn-link p-0 text-danger" title="Hapus produk">
+                  <i class="bi bi-x-circle"></i>
+                </button>
+              </form>
+            </div>
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endfor %}
+            <button class="btn btn-sm btn-outline-rf mt-1" data-bs-toggle="modal"
+                    data-bs-target="#itemModal" onclick='isiItem({{ o.id }}, null)'>
+              <i class="bi bi-plus-lg me-1"></i> Tambah Produk
+            </button>
+          </td>
+          <td class="text-end small">
+            {{ rupiah(o.total) }}
+            {% if kurang.get(o.id) %}
+            <div><span class="badge bg-danger-subtle text-danger-emphasis">Perlu tindakan</span></div>
+            {% endif %}
+          </td>
+          <td class="text-end text-nowrap">
+            <a class="btn btn-sm btn-light" href="{{ url_for('staff.order_detail', order_id=o.id) }}"
+               title="Detail"><i class="bi bi-eye"></i></a>
+            <form method="post" action="{{ url_for('staff.confirm_order', order_id=o.id) }}"
+                  class="d-inline">
+              <input type="hidden" name="aksi" value="terima">
+              <button class="btn btn-sm btn-primary" title="Konfirmasi"><i class="bi bi-check2"></i></button>
+            </form>
+            <form method="post" action="{{ url_for('staff.confirm_order', order_id=o.id) }}"
+                  class="d-inline" onsubmit="return confirm('Tolak pesanan {{ o.kode }}?')">
+              <input type="hidden" name="aksi" value="tolak">
+              <button class="btn btn-sm btn-outline-danger" title="Tolak"><i class="bi bi-x-lg"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6"><div class="rf-empty">Tidak ada pesanan yang menunggu konfirmasi.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal fade" id="itemModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <form class="modal-content" method="post" id="itemForm">
+      <input type="hidden" name="aksi" id="it_aksi" value="tambah">
+      <input type="hidden" name="item_id" id="it_id">
+      <div class="modal-header">
+        <h6 class="modal-title fw-bold" id="it_title">Tambah Produk</h6>
+        <button class="btn-close" data-bs-dismiss="modal" type="button"></button>
+      </div>
+      <div class="modal-body row g-3">
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Produk</label>
+          <select name="product_id" id="it_produk" class="form-select" required>
+            <option value="">— Pilih produk —</option>
+            {% for p in products %}
+            <option value="{{ p.id }}">
+              {{ p.nama }} · {{ rupiah(p.harga) }}/{{ p.satuan }} (stok {{ p.stok }})
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6">
+          <label class="form-label small fw-semibold">Jumlah</label>
+          <input type="number" name="qty" id="it_qty" class="form-control" min="1" value="1" required>
+        </div>
+        <div class="col-12">
+          <div class="alert alert-warning py-2 small mb-0">
+            Stok produk disesuaikan otomatis dan total pesanan serta faktur dihitung ulang.
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-primary" id="it_simpan">Tambah Produk</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function isiItem(orderId, item) {
+  document.getElementById('itemForm').action =
+    '/staff/konfirmasi-order/' + orderId + '/produk';
+  document.getElementById('it_title').textContent = item ? 'Ubah Produk Pesanan' : 'Tambah Produk';
+  document.getElementById('it_simpan').textContent = item ? 'Simpan Perubahan' : 'Tambah Produk';
+  document.getElementById('it_aksi').value = item ? 'ubah' : 'tambah';
+  document.getElementById('it_id').value = item ? item.id : '';
+  document.getElementById('it_produk').value = item ? (item.product_id || '') : '';
+  document.getElementById('it_qty').value = item ? item.qty : 1;
+}
+</script>
+{% endblock %}

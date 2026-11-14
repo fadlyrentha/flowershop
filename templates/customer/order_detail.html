@@ -1,0 +1,127 @@
+{% extends "panel_base.html" %}
+{% block title %}{{ order.kode }}{% endblock %}
+{% block heading %}Detail Pesanan {{ order.kode }}{% endblock %}
+{% block subheading %}Status, rincian produk, dan aksi pesanan{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="rf-card p-3 p-md-4 mb-3">
+      <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
+        <div>
+          <div class="small text-muted">Status pesanan</div>
+          <div class="h5 fw-bold mb-0">{{ order.status }}</div>
+        </div>
+        <div class="text-lg-end">
+          <div class="small text-muted">Total tagihan</div>
+          <div class="h5 fw-bold text-rf mb-0">{{ rupiah(order.total) }}</div>
+          <span class="rf-chip {{ 'gray' if order.status_bayar != 'Lunas' }}">{{ order.status_bayar }}</span>
+        </div>
+      </div>
+
+      <div class="progress mb-3" style="height:8px">
+        {% set idx = ORDER_STATUS.index(order.status) if order.status in ORDER_STATUS else 0 %}
+        {% set pct = (idx / 5 * 100) if order.status != 'Dibatalkan' else 100 %}
+        <div class="progress-bar bg-rf" style="width:{{ [pct, 100]|min }}%"></div>
+      </div>
+      <ul class="rf-steps small">
+        {% for s in ['Menunggu Konfirmasi','Diproses','Quality Kontrol','Siap Kirim','Dikirim','Selesai'] %}
+        <li class="{{ 'done' if ORDER_STATUS.index(order.status) > loop.index0 else ('current' if order.status == s else '') if order.status in ORDER_STATUS else '' }}">
+          {{ s }}
+        </li>
+        {% endfor %}
+      </ul>
+
+      <table class="table table-rf align-middle mt-3">
+        <thead><tr><th>Produk</th><th class="text-center">Qty</th><th class="text-end">Harga</th><th class="text-end">Subtotal</th><th>QC</th></tr></thead>
+        <tbody>
+          {% for i in items %}
+          <tr>
+            <td class="fw-semibold">{{ i.nama_produk }}</td>
+            <td class="text-center">{{ i.qty }}</td>
+            <td class="text-end">{{ rupiah(i.harga) }}</td>
+            <td class="text-end">{{ rupiah(i.subtotal) }}</td>
+            <td><span class="rf-chip {{ 'gray' if i.qc_status == 'Belum Dicek' }}">{{ i.qc_status }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div class="d-flex justify-content-between small"><span class="text-muted">Subtotal</span><span>{{ rupiah(order.subtotal) }}</span></div>
+      <div class="d-flex justify-content-between small"><span class="text-muted">Ongkir</span><span>{{ rupiah(order.ongkir) }}</span></div>
+      <div class="d-flex justify-content-between fw-bold border-top pt-2 mt-1"><span>Total</span><span>{{ rupiah(order.total) }}</span></div>
+    </div>
+
+    <div class="rf-card p-3 p-md-4">
+      <h6 class="fw-bold mb-3">Informasi pengiriman</h6>
+      <div class="row g-2 small">
+        <div class="col-md-6"><span class="text-muted">Penerima:</span> {{ order.nama_pelanggan }}</div>
+        <div class="col-md-6"><span class="text-muted">Telepon:</span> {{ order.telepon }}</div>
+        <div class="col-md-6"><span class="text-muted">Cara:</span> {{ order.pengiriman }}</div>
+        <div class="col-md-6"><span class="text-muted">Pembayaran:</span> {{ order.metode_bayar }}</div>
+        <div class="col-12"><span class="text-muted">Alamat:</span> {{ order.alamat }}</div>
+        {% if order.catatan %}<div class="col-12"><span class="text-muted">Catatan:</span> {{ order.catatan }}</div>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="rf-card p-3 p-md-4">
+      <h6 class="fw-bold mb-3">Aksi</h6>
+      <div class="d-grid gap-2">
+        <a href="{{ wa_link(settings.whatsapp, 'Halo Rasty Florist, saya ingin konfirmasi pesanan ' ~ order.kode ~ ' sebesar ' ~ rupiah(order.total) ~ '. Terima kasih.') }}"
+           target="_blank" rel="noopener" class="btn btn-success">
+          <i class="bi bi-whatsapp me-1"></i> Konfirmasi WhatsApp
+        </a>
+        <button type="button" class="btn btn-outline-rf" data-bs-toggle="modal" data-bs-target="#notifModal">
+          <i class="bi bi-bell me-1"></i> Notifikasi Order
+        </button>
+        {% if order.status in ('Menunggu Konfirmasi','Diproses') %}
+        <form method="post" action="{{ url_for('customer.cancel_order', order_id=order.id) }}"
+              onsubmit="return confirm('Batalkan pesanan {{ order.kode }}?')">
+          <button class="btn btn-light text-danger w-100"><i class="bi bi-x-circle me-1"></i> Batalkan Pesanan</button>
+        </form>
+        {% endif %}
+        <a href="{{ url_for('customer.complaints') }}" class="btn btn-light">
+          <i class="bi bi-chat-left-text me-1"></i> Ajukan Komplain
+        </a>
+      </div>
+    </div>
+
+    <div class="rf-card p-3 mt-3 small">
+      <div class="d-flex justify-content-between mb-1"><span class="text-muted">Kode</span><strong>{{ order.kode }}</strong></div>
+      <div class="d-flex justify-content-between mb-1"><span class="text-muted">Dibuat</span><span>{{ order.created_at }}</span></div>
+      <div class="d-flex justify-content-between"><span class="text-muted">Diperbarui</span><span>{{ order.updated_at }}</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="notifModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title fw-bold">Notifikasi Order {{ order.kode }}</h6>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body small">
+        <p class="mb-2">Ringkasan pesanan siap dibagikan ke admin:</p>
+        <pre class="bg-light p-3 rounded small mb-0" style="white-space:pre-wrap">Halo {{ settings.nama_toko }},
+Saya {{ order.nama_pelanggan }} ingin konfirmasi pesanan:
+
+Kode    : {{ order.kode }}
+Tanggal : {{ order.created_at[:10] }}
+Status  : {{ order.status }}
+{% for i in items %}- {{ i.nama_produk }} x{{ i.qty }} = {{ rupiah(i.subtotal) }}
+{% endfor %}
+Total   : {{ rupiah(order.total) }}
+Bayar   : {{ order.metode_bayar }} ({{ order.status_bayar }})</pre>
+      </div>
+      <div class="modal-footer">
+        <a class="btn btn-success btn-sm" target="_blank" rel="noopener"
+           href="{{ wa_link(settings.whatsapp, 'Halo ' ~ settings.nama_toko ~ ', saya ' ~ order.nama_pelanggan ~ ' konfirmasi pesanan ' ~ order.kode ~ ' total ' ~ rupiah(order.total) ~ '.') }}">
+          <i class="bi bi-whatsapp me-1"></i> Kirim via WhatsApp
+        </a>
+        <button class="btn btn-light btn-sm" data-bs-dismiss="modal">Tutup</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,107 @@
+{% extends "panel_base.html" %}
+{% block title %}Status Pengiriman{% endblock %}
+{% block heading %}Status Produk Dikirim / Diambil{% endblock %}
+{% block subheading %}Kelola status pengiriman dengan aksi tambah, update, hapus, cetak{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3">
+  <button class="btn btn-primary btn-sm" onclick="openShip()"><i class="bi bi-plus-lg me-1"></i> Tambah Pengiriman</button>
+  <a class="btn btn-outline-rf btn-sm" target="_blank" href="{{ url_for('qc.shipments_print') }}">
+    <i class="bi bi-printer me-1"></i> Cetak Daftar
+  </a>
+</div>
+
+<div class="rf-card p-0 overflow-hidden">
+  <div class="table-responsive">
+    <table class="table table-rf align-middle mb-0">
+      <thead><tr><th>Order</th><th>Penerima</th><th>Kurir</th><th>Status</th><th>Keterangan</th><th>Diperbarui</th><th class="text-end">Aksi</th></tr></thead>
+      <tbody>
+        {% for s in rows %}
+        <tr>
+          <td class="small fw-semibold">{{ s.order_id or '-' }}</td>
+          <td class="small">{{ s.nama_penerima }}<br><span class="text-muted">{{ s.alamat }}</span></td>
+          <td class="small">{{ s.kurir or '-' }}</td>
+          <td><span class="rf-chip">{{ s.status }}</span></td>
+          <td class="small text-muted">{{ s.keterangan }}</td>
+          <td class="small text-muted">{{ s.updated_at[:16] }}</td>
+          <td class="text-end text-nowrap">
+            <button class="btn btn-sm btn-light" onclick='openShip({{ s|tojson }})'><i class="bi bi-pencil"></i></button>
+            <form method="post" action="{{ url_for('qc.shipment_delete', sid=s.id) }}" class="d-inline"
+                  onsubmit="return confirm('Hapus data pengiriman ini?')">
+              <button class="btn btn-sm btn-light text-danger"><i class="bi bi-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7"><div class="rf-empty">Belum ada data pengiriman.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal fade" id="shipModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <form class="modal-content" method="post">
+      <div class="modal-header">
+        <h6 class="modal-title fw-bold" id="shipTitle">Tambah Pengiriman</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body row g-3">
+        <input type="hidden" name="id" id="s_id">
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Order terkait</label>
+          <select name="order_id" id="s_order" class="form-select">
+            <option value="">— Tanpa order —</option>
+            {% for o in orders %}<option value="{{ o.id }}">{{ o.kode }} · {{ o.nama_pelanggan }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Nama penerima</label>
+          <input name="nama_penerima" id="s_nama" class="form-control">
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Alamat</label>
+          <textarea name="alamat" id="s_alamat" class="form-control" rows="2"></textarea>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small fw-semibold">Kurir</label>
+          <input name="kurir" id="s_kurir" class="form-control" placeholder="Contoh: Kurir Internal">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small fw-semibold">Status</label>
+          <select name="status" id="s_status" class="form-select">
+            {% for st in ['Menunggu Diambil','Disiapkan','Dikirim','Diambil','Terantar'] %}
+            <option value="{{ st }}">{{ st }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small fw-semibold">Keterangan</label>
+          <input name="keterangan" id="s_ket" class="form-control">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openShip(data) {
+  document.getElementById('shipTitle').textContent = data ? 'Ubah Pengiriman' : 'Tambah Pengiriman';
+  const set = (id, v) => document.getElementById(id).value = (v === null || v === undefined) ? '' : v;
+  set('s_id', data?.id);
+  set('s_order', data?.order_id);
+  set('s_nama', data?.nama_penerima);
+  set('s_alamat', data?.alamat);
+  set('s_kurir', data?.kurir);
+  set('s_status', data ? data.status : 'Menunggu Diambil');
+  set('s_ket', data?.keterangan);
+  new bootstrap.Modal(document.getElementById('shipModal')).show();
+}
+</script>
+{% endblock %}

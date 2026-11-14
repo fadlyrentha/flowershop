@@ -1,0 +1,8 @@
+# Aplikasi
+Flask>=3.0
+
+# Server WSGI - dipilih otomatis sesuai sistem operasi:
+#   Windows : waitress
+#   Linux   : gunicorn (dijalankan di belakang nginx)
+waitress>=3.0; sys_platform == "win32"
+gunicorn>=21.2; sys_platform != "win32"

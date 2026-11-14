@@ -1,0 +1,72 @@
+{% extends "panel_base.html" %}
+{% block title %}Data Pesanan{% endblock %}
+{% block heading %}Data Pesanan{% endblock %}
+{% block subheading %}Kelola pesanan dari pelanggan dan pesanan manual{% endblock %}
+{% block content %}
+{% set gudang = current_user.role == 'staff_gudang' %}
+<div class="d-flex flex-wrap gap-2 justify-content-between mb-3">
+  <form class="d-flex gap-2" method="get">
+    <input name="q" class="form-control form-control-sm" placeholder="Cari kode / nama pelanggan" value="{{ q }}">
+    <select name="status" class="form-select form-select-sm">
+      <option value="">Semua status</option>
+      {% for s in ORDER_STATUS %}<option value="{{ s }}" {% if status == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-sm btn-outline-rf">Filter</button>
+  </form>
+  {% if 'pesanan_baru' in features_aktif %}
+  <a class="btn btn-primary btn-sm"
+     href="{{ url_for('finance.new_order') if current_user.role == 'staff_keuangan' else url_for('staff.new_order') }}">
+    <i class="bi bi-plus-lg me-1"></i> Pesanan Manual
+  </a>
+  {% endif %}
+</div>
+
+<div class="rf-card p-0 overflow-hidden">
+  <div class="table-responsive rf-scroll-x">
+    <table class="table table-rf align-middle mb-0">
+      <thead>
+        {% if gudang %}
+        <tr><th>Kode</th><th>Pelanggan</th><th>Tanggal</th><th>Detail Produk</th><th>Status</th><th class="text-end">Aksi</th></tr>
+        {% else %}
+        <tr><th>Kode</th><th>Pelanggan</th><th>Tanggal</th><th class="text-center">Item</th>
+        <th class="text-end">Total</th><th>Bayar</th><th>Status</th><th class="text-end">Aksi</th></tr>
+        {% endif %}
+      </thead>
+      <tbody>
+        {% for o in rows %}
+        <tr>
+          <td class="fw-semibold small">{{ o.kode }}</td>
+          <td class="small">{{ o.nama_pelanggan }}</td>
+          <td class="small text-muted">{{ o.created_at[:10] }}</td>
+          {% if gudang %}
+          <td class="small">
+            {% for it in items.get(o.id, []) %}
+            <div>{{ it.nama_produk }} <span class="text-muted">× {{ it.qty }}</span></div>
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endfor %}
+          </td>
+          {% else %}
+          <td class="text-center small">{{ o.jumlah_item }}</td>
+          <td class="text-end small">{{ rupiah(o.total) }}</td>
+          <td><span class="rf-chip {{ 'gray' if o.status_bayar != 'Lunas' }}">{{ o.status_bayar }}</span></td>
+          {% endif %}
+          <td><span class="rf-chip">{{ o.status }}</span></td>
+          <td class="text-end text-nowrap">
+            <a class="btn btn-sm btn-light" href="{{ url_for('staff.order_detail', order_id=o.id) }}" title="Detail"><i class="bi bi-eye"></i></a>
+            {% if 'label' in features_aktif %}
+            <a class="btn btn-sm btn-light" href="{{ url_for('staff.order_label', order_id=o.id) }}" target="_blank" title="Cetak label"><i class="bi bi-tag"></i></a>
+            {% endif %}
+            {% if 'qc_list' in features_aktif %}
+            <a class="btn btn-sm btn-light" href="{{ url_for('staff.order_qc_list', order_id=o.id) }}" target="_blank" title="Checklist QC"><i class="bi bi-list-check"></i></a>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="{{ 6 if gudang else 8 }}"><div class="rf-empty">Tidak ada pesanan.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

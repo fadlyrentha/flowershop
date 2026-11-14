@@ -1,0 +1,124 @@
+{% extends "panel_base.html" %}
+{% block title %}Laporan Keuangan{% endblock %}
+{% block heading %}Laporan Keuangan{% endblock %}
+{% block subheading %}Rekap harian, mingguan, bulanan, dan tahunan{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
+  <div class="d-flex gap-2">
+    {% for p, label in [('hari','Hari'),('minggu','Minggu'),('bulan','Bulan'),('tahun','Tahun')] %}
+    <a class="btn btn-sm {{ 'btn-primary' if periode == p else 'btn-light' }}"
+       href="{{ url_for('finance.reports', periode=p) }}">{{ label }}</a>
+    {% endfor %}
+  </div>
+  <div class="d-flex gap-2">
+    <button class="btn btn-primary btn-sm" onclick="openEntry()"><i class="bi bi-plus-lg me-1"></i> Tambah Catatan</button>
+    <a class="btn btn-outline-rf btn-sm" target="_blank"
+       href="{{ url_for('finance.reports_print', periode=periode) }}">
+      <i class="bi bi-printer me-1"></i> Cetak
+    </a>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-4">
+    <div class="rf-stat"><div class="label">Pemasukan</div>
+      <div class="value text-success" style="font-size:1.05rem">{{ rupiah(pemasukan) }}</div></div>
+  </div>
+  <div class="col-6 col-lg-4">
+    <div class="rf-stat"><div class="label">Pengeluaran</div>
+      <div class="value text-danger" style="font-size:1.05rem">{{ rupiah(pengeluaran) }}</div></div>
+  </div>
+  <div class="col-12 col-lg-4">
+    <div class="rf-stat"><div class="label">Laba Bersih</div>
+      <div class="value text-rf" style="font-size:1.05rem">{{ rupiah(laba) }}</div></div>
+  </div>
+</div>
+
+<div class="rf-card p-0 overflow-hidden">
+  <div class="table-responsive">
+    <table class="table table-rf align-middle mb-0">
+      <thead><tr><th>Tanggal</th><th>Tipe</th><th>Kategori</th><th>Keterangan</th><th class="text-end">Jumlah</th><th class="text-end">Aksi</th></tr></thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td class="small text-muted">{{ r.tanggal }}</td>
+          <td><span class="badge {{ 'bg-success-subtle text-success-emphasis' if r.tipe == 'pemasukan' else 'bg-danger-subtle text-danger-emphasis' }}">{{ r.tipe }}</span></td>
+          <td class="small">{{ r.kategori }}</td>
+          <td class="small text-muted">{{ r.keterangan }}</td>
+          <td class="text-end small fw-semibold">{{ rupiah(r.jumlah) }}</td>
+          <td class="text-end text-nowrap">
+            <button class="btn btn-sm btn-light" onclick='openEntry({{ r|tojson }})'><i class="bi bi-pencil"></i></button>
+            <form method="post" action="{{ url_for('finance.report_delete', eid=r.id) }}" class="d-inline"
+                  onsubmit="return confirm('Hapus catatan ini?')">
+              <button class="btn btn-sm btn-light text-danger"><i class="bi bi-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6"><div class="rf-empty">Belum ada catatan pada periode ini.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal fade" id="entryModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <form class="modal-content" method="post">
+      <div class="modal-header">
+        <h6 class="modal-title fw-bold" id="entryTitle">Tambah Catatan Keuangan</h6>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body row g-3">
+        <input type="hidden" name="id" id="e_id">
+        <div class="col-6">
+          <label class="form-label small fw-semibold">Tipe</label>
+          <select name="tipe" id="e_tipe" class="form-select">
+            <option value="pemasukan">Pemasukan</option><option value="pengeluaran">Pengeluaran</option>
+          </select>
+        </div>
+        <div class="col-6">
+          <label class="form-label small fw-semibold">Tanggal</label>
+          <input type="date" name="tanggal" id="e_tanggal" class="form-control">
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Kategori</label>
+          <input name="kategori" id="e_kategori" class="form-control" list="katList" value="Penjualan">
+          <datalist id="katList">
+            {% for k in ['Penjualan','Pembayaran Pelanggan','Pembelian Stok','Operasional','Gaji','Lainnya'] %}
+            <option value="{{ k }}">{% endfor %}
+          </datalist>
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Keterangan</label>
+          <input name="keterangan" id="e_keterangan" class="form-control">
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Jumlah (Rp)</label>
+          <input type="number" name="jumlah" id="e_jumlah" class="form-control" min="0" required>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openEntry(data) {
+  document.getElementById('entryTitle').textContent = data ? 'Ubah Catatan Keuangan' : 'Tambah Catatan Keuangan';
+  const set = (id, v) => document.getElementById(id).value = (v === null || v === undefined) ? '' : v;
+  set('e_id', data?.id);
+  set('e_tipe', data ? data.tipe : 'pemasukan');
+  set('e_tanggal', data ? data.tanggal : new Date().toISOString().slice(0, 10));
+  set('e_kategori', data ? data.kategori : 'Penjualan');
+  set('e_keterangan', data?.keterangan);
+  set('e_jumlah', data?.jumlah ?? '');
+  new bootstrap.Modal(document.getElementById('entryModal')).show();
+}
+</script>
+{% endblock %}

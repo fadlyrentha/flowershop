@@ -1,0 +1,14 @@
+{% extends "public/base.html" %}
+{% block title %}{{ kode }}{% endblock %}
+{% block body %}
+<div class="container py-5 text-center" style="max-width:560px">
+  <div class="rf-card p-5">
+    <div class="display-3 fw-bold text-rf mb-2">{{ kode }}</div>
+    <p class="text-muted mb-4">{{ pesan }}</p>
+    <div class="d-flex justify-content-center gap-2">
+      <a href="{{ url_for('public.index') }}" class="btn btn-primary">Ke Beranda</a>
+      <a href="javascript:history.back()" class="btn btn-outline-rf">Kembali</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

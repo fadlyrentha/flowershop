@@ -1,0 +1,103 @@
+{% extends "public/base.html" %}
+{% block title %}Faktur {{ invoice.nomor }}{% endblock %}
+{% block head %}
+<style>
+  .rf-invoice-desain { position: relative; overflow: hidden; min-height: 900px; }
+  .rf-invoice-desain .rf-desain-bg {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: cover; object-position: center; z-index: 0;
+  }
+  .rf-invoice-desain .rf-desain-body {
+    position: relative; z-index: 1; min-height: 900px;
+    padding: 2.5rem; font-size: .85rem;
+  }
+  @media print {
+    .rf-invoice-desain, .rf-invoice-desain .rf-desain-body { min-height: 0; }
+    .rf-invoice-desain .rf-desain-body { padding: 1.5rem; }
+    .rf-invoice-desain .rf-desain-bg { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+{% endblock %}
+{% block body %}
+<div class="container py-4" style="max-width:820px">
+  <div class="d-print-none mb-3 d-flex gap-2">
+    <button class="btn btn-primary btn-sm" onclick="window.print()"><i class="bi bi-printer me-1"></i> Cetak</button>
+    <a class="btn btn-danger btn-sm" href="{{ url_for('finance.invoice_pdf_download', iid=invoice.id) }}">
+      <i class="bi bi-file-earmark-pdf me-1"></i> Unduh PDF
+    </a>
+    <a class="btn btn-success btn-sm" target="_blank" rel="noopener" href="{{ url_for('finance.invoice_wa', iid=invoice.id) }}">
+      <i class="bi bi-whatsapp me-1"></i> Kirim ke WhatsApp
+    </a>
+    <a class="btn btn-light btn-sm" href="{{ url_for('finance.invoices') }}">Kembali</a>
+  </div>
+
+  <div class="rf-card rf-invoice-desain">
+    <img src="{{ url_for('static', filename='uploads/' + desain) }}" alt="" class="rf-desain-bg">
+    <div class="rf-desain-body d-flex flex-column justify-content-between gap-4">
+      <div class="d-flex justify-content-between">
+        <div class="d-flex align-items-center gap-2">
+          {% if settings.logo and settings.invoice_logo_tampil == '1' %}
+          <img src="{{ url_for('static', filename='uploads/' ~ settings.logo) }}" alt="Logo"
+               style="max-height:{{ invoice_logo_px }}px;max-width:150px;object-fit:contain">
+          {% endif %}
+          <div>
+            <div class="fw-bold fs-5">{{ settings.nama_toko }}</div>
+            <div class="small">{{ settings.alamat }}</div>
+            <div class="small">{{ settings.telepon }} · {{ settings.email }}</div>
+          </div>
+        </div>
+        <div class="text-end">
+          <div class="fw-bold">FAKTUR</div>
+          <div class="small">{{ invoice.nomor }}</div>
+          <div class="small">{{ invoice.created_at[:10] }}</div>
+        </div>
+      </div>
+
+      <div class="row small">
+        <div class="col-6">
+          <div class="text-muted">Kepada</div>
+          <div class="fw-semibold">{{ invoice.nama_pelanggan }}</div>
+          {% if order %}<div>{{ order.alamat }}</div><div>{{ order.telepon }}</div>{% endif %}
+        </div>
+        <div class="col-6 text-end">
+          <div><span class="text-muted">Kode tagihan:</span> <strong>{{ invoice.kode_tagihan }}</strong></div>
+          <div><span class="text-muted">Status:</span> <strong>{{ invoice.status }}</strong></div>
+          <div><span class="text-muted">Jatuh tempo:</span> {{ invoice.jatuh_tempo or '-' }}</div>
+          {% if order %}<div><span class="text-muted">Order:</span> {{ order.kode }}</div>{% endif %}
+        </div>
+      </div>
+
+      <div>
+        {% if items %}
+        <table class="table table-sm table-borderless mb-2" style="font-size:.8rem">
+          <thead><tr><th>Produk</th><th class="text-center">Qty</th><th class="text-end">Harga</th><th class="text-end">Subtotal</th></tr></thead>
+          <tbody>
+            {% for i in items %}
+            <tr>
+              <td>{{ i.nama_produk }}</td>
+              <td class="text-center">{{ i.qty }}</td>
+              <td class="text-end">{{ rupiah(i.harga) }}</td>
+              <td class="text-end">{{ rupiah(i.subtotal) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
+        <div class="d-flex justify-content-end">
+          <div class="fw-bold">Total Tagihan: <span class="text-rf">{{ rupiah(invoice.total) }}</span></div>
+        </div>
+        {% if tampil_rekening and rekening %}
+        <div class="mt-3 small">
+          <div class="fw-bold text-muted" style="font-size:.68rem;letter-spacing:.08em">PEMBAYARAN TRANSFER</div>
+          {% for baris in rekening.splitlines() %}
+            {% if baris.strip() %}<div>{{ baris.strip() }}</div>{% endif %}
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="small text-muted text-center">{{ settings.footer_text }}</div>
+    </div>
+  </div>
+</div>
+{% endblock %}

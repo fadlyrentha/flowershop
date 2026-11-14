@@ -1,0 +1,112 @@
+{% extends "panel_base.html" %}
+{% block title %}Ganti Template Invoice{% endblock %}
+{% block heading %}Ganti Template Invoice{% endblock %}
+{% block subheading %}Pilih tampilan faktur atau unggah berkas desain sendiri{% endblock %}
+{% block content %}
+<form method="post" enctype="multipart/form-data">
+  <div class="row g-3">
+    {% for key, label in templates.items() %}
+    <div class="col-md-6">
+      <label class="rf-card p-3 d-block h-100 {{ 'border border-2 border-rf' if aktif == key else '' }}" style="cursor:pointer">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div class="fw-bold">{{ label.split(' — ')[0] }}</div>
+          <input class="form-check-input mt-0" type="radio" name="template_invoice" value="{{ key }}"
+                 {% if aktif == key %}checked{% endif %}>
+        </div>
+        <div class="small text-muted mb-3">{{ label.split(' — ')[1] }}</div>
+        {% if key == 'klasik' %}
+        <div class="border rounded p-2 bg-white">
+          <div class="d-flex justify-content-between border-bottom pb-1 mb-1">
+            <span class="fw-bold small">Toko</span><span class="small">FAKTUR</span>
+          </div>
+          <div class="small text-muted">Kepada · Status · Kode tagihan</div>
+          <div class="border-top mt-2 pt-1 small text-end fw-bold">Total</div>
+        </div>
+        {% elif key == 'modern' %}
+        <div class="border rounded overflow-hidden bg-white">
+          <div class="p-2 text-white small fw-bold" style="background:linear-gradient(135deg,#b3204f,#7a1535)">Toko · FAKTUR</div>
+          <div class="p-2 small text-muted">Kepada · Status · Kode tagihan</div>
+          <div class="p-2 text-end"><span class="badge bg-rf-soft text-rf">Total</span></div>
+        </div>
+        {% else %}
+        <div class="border rounded overflow-hidden bg-white">
+          {% if desain %}
+          <img src="{{ url_for('static', filename='uploads/' + desain) }}" alt="Desain" class="w-100" style="height:110px;object-fit:cover">
+          {% else %}
+          <div class="d-flex align-items-center justify-content-center text-muted small" style="height:110px">
+            Belum ada berkas desain
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
+      </label>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="rf-card p-3 p-md-4 mt-3">
+    <h6 class="fw-bold mb-3">Logo di kop faktur</h6>
+    <div class="row g-3 align-items-center">
+      <div class="col-md-4">
+        <div class="border rounded p-2 bg-white d-flex align-items-center justify-content-center"
+             style="height:110px">
+          {% if logo %}
+          <img src="{{ url_for('static', filename='uploads/' ~ logo) }}" alt="Logo"
+               style="max-height:{{ invoice_logo_px }}px;max-width:100%;object-fit:contain">
+          {% else %}
+          <span class="small text-muted">Logo belum diunggah</span>
+          {% endif %}
+        </div>
+        <div class="form-text">
+          {% if logo %}
+          Logo diambil dari <a href="{{ url_for('admin.settings') }}">Pengaturan Situs</a>.
+          {% else %}
+          Unggah logo di <a href="{{ url_for('admin.settings') }}">Pengaturan Situs</a>.
+          {% endif %}
+          Gunakan PNG atau JPG agar logo ikut tertanam di berkas PDF.
+        </div>
+      </div>
+      <div class="col-md-8">
+        <div class="form-check form-switch mb-3">
+          <input class="form-check-input" type="checkbox" name="invoice_logo_tampil"
+                 id="logo_tampil" {% if logo_tampil %}checked{% endif %}>
+          <label class="form-check-label small" for="logo_tampil">
+            Tampilkan logo di kop faktur (cetak, PDF, dan semua template)
+          </label>
+        </div>
+        <label class="form-label small fw-semibold">Ukuran logo</label>
+        <div class="d-flex flex-wrap gap-3">
+          {% for kunci, label, px in INVOICE_LOGO_UKURAN %}
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="invoice_logo_ukuran"
+                   id="logo_{{ kunci }}" value="{{ kunci }}"
+                   {% if logo_ukuran == kunci %}checked{% endif %}>
+            <label class="form-check-label small" for="logo_{{ kunci }}">{{ label }} ({{ px }}px)</label>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rf-card p-3 p-md-4 mt-3">
+    <label class="form-label small fw-semibold">Berkas desain invoice (PNG / JPG / WEBP)</label>
+    <input type="file" name="desain" class="form-control form-control-sm" accept="image/png,image/jpeg,image/webp">
+    <div class="form-text">
+      Gambar dipakai sebagai latar faktur; data pesanan dan total dicetak di atasnya.
+      {% if desain %}Berkas aktif: <code>{{ desain }}</code>{% endif %}
+    </div>
+  </div>
+
+  <div class="d-flex justify-content-between mt-3">
+    <button class="btn btn-primary"><i class="bi bi-check2 me-1"></i> Simpan Template</button>
+  </div>
+</form>
+
+{% if desain %}
+<form method="post" action="{{ url_for('admin.invoice_template_delete_design') }}"
+      onsubmit="return confirm('Hapus berkas desain invoice?')">
+  <button class="btn btn-outline-danger btn-sm mt-2"><i class="bi bi-trash me-1"></i> Hapus Berkas Desain</button>
+</form>
+{% endif %}
+{% endblock %}

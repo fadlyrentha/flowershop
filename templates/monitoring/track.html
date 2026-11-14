@@ -1,0 +1,66 @@
+{% extends "panel_base.html" %}
+{% block title %}Lacak Pesanan{% endblock %}
+{% block heading %}Lacak Pesanan{% endblock %}
+{% block subheading %}Cari posisi pesanan berdasarkan kode{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="rf-card p-3 p-md-4 mb-3">
+      <form class="d-flex gap-2" method="get">
+        <input name="kode" class="form-control" placeholder="Contoh: INV20260101-0001" value="{{ kode }}" required>
+        <button class="btn btn-primary">Lacak</button>
+      </form>
+    </div>
+
+    {% if kode and not order %}
+    <div class="rf-card p-4"><div class="rf-empty">Pesanan dengan kode <strong>{{ kode }}</strong> tidak ditemukan.</div></div>
+    {% endif %}
+
+    {% if order %}
+    <div class="rf-card p-3 p-md-4">
+      <div class="d-flex flex-wrap justify-content-between gap-2 mb-3">
+        <div>
+          <div class="fw-bold">{{ order.kode }}</div>
+          <div class="small text-muted">{{ order.nama_pelanggan }} · {{ order.created_at[:16] }}</div>
+        </div>
+        <span class="rf-chip">{{ order.status }}</span>
+      </div>
+      <div class="table-responsive rf-scroll-x">
+        <table class="table table-rf align-middle mb-0">
+          <thead><tr><th>Produk</th><th class="text-center">Qty</th><th>QC</th></tr></thead>
+          <tbody>
+            {% for it in items %}
+            <tr>
+              <td class="small">{{ it.nama_produk }}</td>
+              <td class="text-center small">{{ it.qty }}</td>
+              <td><span class="rf-chip gray">{{ it.qc_status }}</span></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3"><div class="rf-empty">Tidak ada item.</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="small text-muted mt-3">
+        Alamat: {{ order.alamat or '—' }} · Pengiriman: {{ order.pengiriman }}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="col-lg-4">
+    <div class="rf-card p-3 p-md-4">
+      <h6 class="fw-bold mb-3">Pesanan terbaru</h6>
+      {% for o in orders %}
+      <a class="d-flex justify-content-between align-items-center py-2 border-bottom text-decoration-none small"
+         href="{{ url_for('monitoring.track', kode=o.kode) }}">
+        <span class="fw-semibold">{{ o.kode }}</span>
+        <span class="text-muted">{{ o.status }}</span>
+      </a>
+      {% else %}
+      <div class="rf-empty">Belum ada pesanan.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

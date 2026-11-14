@@ -1,0 +1,84 @@
+{% extends "panel_base.html" %}
+{% block title %}Verifikasi QC{% endblock %}
+{% block heading %}Verifikasi Produk — {{ order.kode }}{% endblock %}
+{% block subheading %}{{ order.nama_pelanggan }} · status pesanan: {{ order.status }}{% endblock %}
+{% block content %}
+<form method="post" enctype="multipart/form-data">
+  {% for i in items %}
+  {% set cek = checks.get(i.id) %}
+  <div class="rf-card p-3 p-md-4 mb-3">
+    <div class="d-flex justify-content-between flex-wrap gap-2 mb-3">
+      <div>
+        <div class="fw-bold">{{ i.nama_produk }}</div>
+        <div class="small text-muted">Qty {{ i.qty }} × {{ rupiah(i.harga) }} = {{ rupiah(i.subtotal) }}</div>
+      </div>
+      <span class="rf-chip {{ 'gray' if i.qc_status == 'Belum Dicek' }}">{{ i.qc_status }}</span>
+    </div>
+    <div class="row g-3">
+      <div class="col-md-3">
+        <label class="form-label small fw-semibold">Status pengecekan</label>
+        <select name="status_{{ i.id }}" class="form-select form-select-sm">
+          <option value="">— Tidak diubah —</option>
+          {% for s in QC_STATUS %}
+          <option value="{{ s }}" {% if cek and cek.status == s %}selected{% endif %}>{{ s }}</option>
+          {% endfor %}
+        </select>
+        <div class="form-check mt-2">
+          <input class="form-check-input" type="checkbox" id="cek_{{ i.id }}"
+                 {% if i.qc_status == 'Lolos QC' %}checked{% endif %}
+                 onchange="if(this.checked) document.querySelector('[name=status_{{ i.id }}]').value='Lolos QC'">
+          <label class="form-check-label small" for="cek_{{ i.id }}">Produk sudah dicek</label>
+        </div>
+      </div>
+      <div class="col-md-5">
+        <label class="form-label small fw-semibold">Keterangan</label>
+        <textarea name="catatan_{{ i.id }}" class="form-control form-control-sm" rows="2"
+                  placeholder="Kondisi bunga, kelengkapan, cacat, dsb.">{{ i.qc_catatan }}</textarea>
+        <div class="row g-2 mt-1">
+          <div class="col-6">
+            <label class="form-label small fw-semibold">Upload foto</label>
+            <input type="file" name="foto_{{ i.id }}" class="form-control form-control-sm" accept="image/*">
+          </div>
+          <div class="col-6">
+            <label class="form-label small fw-semibold">Upload video</label>
+            <input type="file" name="video_{{ i.id }}" class="form-control form-control-sm" accept="video/*">
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label small fw-semibold">Bukti terakhir</label>
+        <div class="border rounded p-2 h-100">
+          {% if cek %}
+            <div class="small text-muted mb-1">{{ cek.status }} · {{ cek.created_at[:16] }}</div>
+            {% if cek.foto %}
+            <a href="{{ url_for('static', filename='uploads/' ~ cek.foto) }}" target="_blank">
+              <img src="{{ url_for('static', filename='uploads/' ~ cek.foto) }}" class="rounded mb-1"
+                   style="width:100%;max-height:110px;object-fit:cover" alt="Bukti QC">
+            </a>
+            {% endif %}
+            {% if cek.video %}
+            <video src="{{ url_for('static', filename='uploads/' ~ cek.video) }}" controls
+                   style="width:100%;max-height:120px;border-radius:8px;background:#000"></video>
+            {% endif %}
+            {% if cek.catatan %}<div class="small mt-1">{{ cek.catatan }}</div>{% endif %}
+          {% else %}
+            <div class="small text-muted">Belum ada bukti pengecekan.</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+  <div class="rf-card p-3 d-flex flex-wrap gap-2 justify-content-between align-items-center">
+    <div class="small text-muted">
+      Setelah semua item berstatus <strong>Lolos QC</strong>, status pesanan otomatis menjadi Siap Kirim
+      dan checklist diteruskan ke bagian Keuangan.
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('qc.orders') }}" class="btn btn-light">Kembali</a>
+      <button class="btn btn-primary"><i class="bi bi-check2-circle me-1"></i> Simpan Hasil Pengecekan</button>
+    </div>
+  </div>
+</form>
+{% endblock %}

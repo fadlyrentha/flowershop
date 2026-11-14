@@ -1,0 +1,304 @@
+{% extends "panel_base.html" %}
+{% block title %}Kontroller ID{% endblock %}
+{% block heading %}Kontroller ID{% endblock %}
+{% block subheading %}Ubah atau hapus ID pesanan, keluhan, transaksi, verifikasi pembayaran, faktur, dan status kirim/ambil{% endblock %}
+{% block content %}
+<form class="d-flex gap-2 mb-3" method="get">
+  <input name="q" class="form-control form-control-sm" placeholder="Cari ID / kode / nama" value="{{ q }}">
+  <button class="btn btn-sm btn-outline-rf">Cari</button>
+</form>
+
+<ul class="nav nav-pills flex-wrap gap-2 mb-3" role="tablist">
+  <li class="nav-item"><button class="nav-link btn-sm active bg-rf text-white" data-bs-toggle="pill" data-bs-target="#tabPesanan" type="button">ID Pesanan</button></li>
+  <li class="nav-item"><button class="nav-link btn-sm bg-white text-dark" data-bs-toggle="pill" data-bs-target="#tabKeluhan" type="button">ID Keluhan</button></li>
+  <li class="nav-item"><button class="nav-link btn-sm bg-white text-dark" data-bs-toggle="pill" data-bs-target="#tabTransaksi" type="button">ID Transaksi</button></li>
+  <li class="nav-item"><button class="nav-link btn-sm bg-white text-dark" data-bs-toggle="pill" data-bs-target="#tabVerifikasi" type="button">ID Verifikasi Pembayaran</button></li>
+  <li class="nav-item"><button class="nav-link btn-sm bg-white text-dark" data-bs-toggle="pill" data-bs-target="#tabFaktur" type="button">No. Faktur</button></li>
+  <li class="nav-item"><button class="nav-link btn-sm bg-white text-dark" data-bs-toggle="pill" data-bs-target="#tabKirim" type="button">ID Status Kirim / Ambil</button></li>
+</ul>
+
+<div class="tab-content">
+  <div class="tab-pane fade show active" id="tabPesanan">
+    <div class="rf-card p-0 overflow-hidden">
+      <div class="table-responsive rf-scroll-x">
+        <table class="table table-rf align-middle mb-0">
+          <thead><tr><th>ID</th><th>Kode Pesanan</th><th>Pelanggan</th><th>Status</th><th>Tanggal</th><th class="text-end">Aksi</th></tr></thead>
+          <tbody>
+            {% for r in pesanan %}
+            <tr>
+              <td class="small fw-semibold">#{{ r.id }}</td>
+              <td class="small">{{ r.kode }}</td>
+              <td class="small">{{ r.nama_pelanggan }}</td>
+              <td><span class="rf-chip">{{ r.status }}</span></td>
+              <td class="small text-muted text-nowrap">{{ r.created_at[:16] }}</td>
+              <td class="text-end text-nowrap">
+                <button class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#editPesanan"
+                        onclick='isiEdit("pesanan", {{ r|tojson }})'><i class="bi bi-pencil"></i></button>
+                <form method="post" action="{{ url_for('admin.invoice_code_delete', jenis='pesanan', item_id=r.id) }}"
+                      class="d-inline" onsubmit="return confirm('Hapus pesanan {{ r.kode }} beserta faktur & pembayarannya?')">
+                  <input type="hidden" name="q" value="{{ q }}">
+                  <button class="btn btn-sm btn-light text-danger"><i class="bi bi-trash"></i></button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6"><div class="rf-empty">Tidak ada data.</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-pane fade" id="tabKeluhan">
+    <div class="rf-card p-0 overflow-hidden">
+      <div class="table-responsive rf-scroll-x">
+        <table class="table table-rf align-middle mb-0">
+          <thead><tr><th>ID</th><th>Kode Keluhan</th><th>Pelanggan</th><th>Subjek</th><th>Status</th><th>Tanggal</th><th class="text-end">Aksi</th></tr></thead>
+          <tbody>
+            {% for r in keluhan %}
+            <tr>
+              <td class="small fw-semibold">#{{ r.id }}</td>
+              <td class="small">{{ r.kode }}</td>
+              <td class="small">{{ r.nama_pelanggan }}</td>
+              <td class="small">{{ r.subjek }}</td>
+              <td><span class="rf-chip">{{ r.status }}</span></td>
+              <td class="small text-muted text-nowrap">{{ r.created_at[:16] }}</td>
+              <td class="text-end text-nowrap">
+                <button class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#editKeluhan"
+                        onclick='isiEdit("keluhan", {{ r|tojson }})'><i class="bi bi-pencil"></i></button>
+                <form method="post" action="{{ url_for('admin.invoice_code_delete', jenis='keluhan', item_id=r.id) }}"
+                      class="d-inline" onsubmit="return confirm('Hapus keluhan {{ r.kode }}?')">
+                  <input type="hidden" name="q" value="{{ q }}">
+                  <button class="btn btn-sm btn-light text-danger"><i class="bi bi-trash"></i></button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7"><div class="rf-empty">Tidak ada data.</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-pane fade" id="tabTransaksi">
+    <div class="rf-card p-0 overflow-hidden">
+      <div class="table-responsive rf-scroll-x">
+        <table class="table table-rf align-middle mb-0">
+          <thead><tr><th>ID Transaksi</th><th>No. Faktur</th><th>ID Pesanan</th><th>Metode</th><th class="text-end">Jumlah</th><th>Status</th><th>Tanggal</th><th class="text-end">Aksi</th></tr></thead>
+          <tbody>
+            {% for r in transaksi %}
+            <tr>
+              <td class="small fw-semibold">#{{ r.id }}</td>
+              <td class="small">{{ r.nomor_faktur or '—' }}</td>
+              <td class="small">{{ ('#' ~ r.order_id) if r.order_id else '—' }}</td>
+              <td class="small">{{ r.metode }}</td>
+              <td class="text-end small">{{ rupiah(r.jumlah) }}</td>
+              <td><span class="rf-chip {{ 'gray' if r.status != 'Terverifikasi' }}">{{ r.status }}</span></td>
+              <td class="small text-muted text-nowrap">{{ r.created_at[:16] }}</td>
+              <td class="text-end text-nowrap">
+                <button class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#editTransaksi"
+                        onclick='isiEdit("transaksi", {{ r|tojson }})'><i class="bi bi-pencil"></i></button>
+                <form method="post" action="{{ url_for('admin.invoice_code_delete', jenis='transaksi', item_id=r.id) }}"
+                      class="d-inline" onsubmit="return confirm('Hapus transaksi #{{ r.id }}?')">
+                  <input type="hidden" name="q" value="{{ q }}">
+                  <button class="btn btn-sm btn-light text-danger"><i class="bi bi-trash"></i></button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8"><div class="rf-empty">Tidak ada data.</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-pane fade" id="tabVerifikasi">
+    <div class="rf-card p-0 overflow-hidden">
+      <div class="table-responsive rf-scroll-x">
+        <table class="table table-rf align-middle mb-0">
+          <thead><tr><th>ID Verifikasi</th><th>ID Transaksi</th><th>No. Faktur</th><th>Metode</th><th class="text-end">Jumlah</th><th>Status Verifikasi</th><th>Tanggal</th><th class="text-end">Aksi</th></tr></thead>
+          <tbody>
+            {% for r in transaksi %}
+            <tr>
+              <td class="small fw-semibold">#{{ r.id }}</td>
+              <td class="small">#{{ r.id }}</td>
+              <td class="small">{{ r.nomor_faktur or '—' }}</td>
+              <td class="small">{{ r.metode }}</td>
+              <td class="text-end small">{{ rupiah(r.jumlah) }}</td>
+              <td><span class="rf-chip {{ 'gray' if r.status != 'Terverifikasi' }}">{{ r.status }}</span></td>
+              <td class="small text-muted text-nowrap">{{ r.created_at[:16] }}</td>
+              <td class="text-end text-nowrap">
+                <button class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#editTransaksi"
+                        onclick='isiEdit("transaksi", {{ r|tojson }})'><i class="bi bi-pencil"></i></button>
+                <form method="post" action="{{ url_for('admin.invoice_code_delete', jenis='transaksi', item_id=r.id) }}"
+                      class="d-inline" onsubmit="return confirm('Hapus verifikasi #{{ r.id }}?')">
+                  <input type="hidden" name="q" value="{{ q }}">
+                  <button class="btn btn-sm btn-light text-danger"><i class="bi bi-trash"></i></button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8"><div class="rf-empty">Tidak ada data.</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-pane fade" id="tabFaktur">
+    <div class="rf-card p-0 overflow-hidden">
+      <div class="table-responsive rf-scroll-x">
+        <table class="table table-rf align-middle mb-0">
+          <thead><tr><th>ID</th><th>No. Faktur</th><th>Pelanggan</th><th>Kode Tagihan</th><th class="text-end">Total</th><th>Status</th><th class="text-end">Aksi</th></tr></thead>
+          <tbody>
+            {% for r in faktur %}
+            <tr>
+              <td class="small fw-semibold">#{{ r.id }}</td>
+              <td class="small">{{ r.nomor }}</td>
+              <td class="small">{{ r.nama_pelanggan }}</td>
+              <td class="small"><span class="rf-chip gray">{{ r.kode_tagihan }}</span></td>
+              <td class="text-end small">{{ rupiah(r.total) }}</td>
+              <td><span class="rf-chip {{ 'gray' if r.status != 'Lunas' }}">{{ r.status }}</span></td>
+              <td class="text-end text-nowrap">
+                <button class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#editFaktur"
+                        onclick='isiEdit("faktur", {{ r|tojson }})'><i class="bi bi-pencil"></i></button>
+                <form method="post" action="{{ url_for('admin.invoice_code_delete', jenis='faktur', item_id=r.id) }}"
+                      class="d-inline" onsubmit="return confirm('Hapus faktur {{ r.nomor }}?')">
+                  <input type="hidden" name="q" value="{{ q }}">
+                  <button class="btn btn-sm btn-light text-danger"><i class="bi bi-trash"></i></button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7"><div class="rf-empty">Tidak ada data.</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-pane fade" id="tabKirim">
+    <div class="rf-card p-0 overflow-hidden">
+      <div class="table-responsive rf-scroll-x">
+        <table class="table table-rf align-middle mb-0">
+          <thead><tr><th>ID Status Kirim/Ambil</th><th>ID Pesanan</th><th>Penerima</th><th>Kurir</th><th>Status</th><th>Tanggal</th><th class="text-end">Aksi</th></tr></thead>
+          <tbody>
+            {% for r in pengiriman %}
+            <tr>
+              <td class="small fw-semibold">#{{ r.id }}</td>
+              <td class="small">{{ ('#' ~ r.order_id) if r.order_id else '—' }}</td>
+              <td class="small">{{ r.nama_penerima }}</td>
+              <td class="small">{{ r.kurir }}</td>
+              <td><span class="rf-chip">{{ r.status }}</span></td>
+              <td class="small text-muted text-nowrap">{{ r.created_at[:16] }}</td>
+              <td class="text-end text-nowrap">
+                <button class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#editKirim"
+                        onclick='isiEdit("pengiriman", {{ r|tojson }})'><i class="bi bi-pencil"></i></button>
+                <form method="post" action="{{ url_for('admin.invoice_code_delete', jenis='pengiriman', item_id=r.id) }}"
+                      class="d-inline" onsubmit="return confirm('Hapus status kirim/ambil #{{ r.id }}?')">
+                  <input type="hidden" name="q" value="{{ q }}">
+                  <button class="btn btn-sm btn-light text-danger"><i class="bi bi-trash"></i></button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7"><div class="rf-empty">Tidak ada data.</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% set modals = [
+  ('editPesanan', 'pesanan', 'Ubah Pesanan', [
+    ('kode', 'Kode pesanan', 'text'),
+    ('nama_pelanggan', 'Pelanggan', 'text'),
+    ('status', 'Status', 'status_pesanan'),
+  ]),
+  ('editKeluhan', 'keluhan', 'Ubah Keluhan', [
+    ('kode', 'Kode keluhan', 'text'),
+    ('nama_pelanggan', 'Pelanggan', 'text'),
+    ('subjek', 'Subjek', 'text'),
+    ('status', 'Status', 'text'),
+  ]),
+  ('editTransaksi', 'transaksi', 'Ubah Transaksi', [
+    ('metode', 'Metode', 'text'),
+    ('jumlah', 'Jumlah (Rp)', 'number'),
+    ('status', 'Status', 'text'),
+  ]),
+  ('editFaktur', 'faktur', 'Ubah Faktur', [
+    ('nomor', 'Nomor faktur', 'text'),
+    ('nama_pelanggan', 'Pelanggan', 'text'),
+    ('kode_tagihan', 'Kode tagihan', 'kode_tagihan'),
+    ('total', 'Total (Rp)', 'number'),
+    ('status', 'Status', 'text'),
+  ]),
+  ('editKirim', 'pengiriman', 'Ubah Status Kirim / Ambil', [
+    ('nama_penerima', 'Penerima', 'text'),
+    ('kurir', 'Kurir', 'text'),
+    ('status', 'Status', 'text'),
+  ]),
+] %}
+
+{% for modal_id, jenis, judul, fields in modals %}
+<div class="modal fade" id="{{ modal_id }}" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <form class="modal-content" method="post"
+          action="{{ url_for('admin.invoice_code_update', jenis=jenis, item_id=0) }}"
+          data-base="{{ url_for('admin.invoice_code_update', jenis=jenis, item_id=0) }}"
+          id="form_{{ jenis }}">
+      <div class="modal-header">
+        <h6 class="modal-title fw-bold">{{ judul }}</h6>
+        <button class="btn-close" data-bs-dismiss="modal" type="button"></button>
+      </div>
+      <div class="modal-body row g-3">
+        <input type="hidden" name="q" value="{{ q }}">
+        {% for name, label, tipe in fields %}
+        <div class="col-12">
+          <label class="form-label small fw-semibold">{{ label }}</label>
+          {% if tipe == 'status_pesanan' %}
+          <select name="{{ name }}" class="form-select" data-field="{{ name }}">
+            {% for s in status_pesanan %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+          </select>
+          {% elif tipe == 'kode_tagihan' %}
+          <select name="{{ name }}" class="form-select" data-field="{{ name }}">
+            {% for k in kode_tagihan %}<option value="{{ k }}">{{ k }}</option>{% endfor %}
+          </select>
+          {% else %}
+          <input name="{{ name }}" data-field="{{ name }}" class="form-control"
+                 type="{{ 'number' if tipe == 'number' else 'text' }}">
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function isiEdit(jenis, data) {
+  const form = document.getElementById('form_' + jenis);
+  form.action = form.dataset.base.replace(/\/0$/, '/' + data.id);
+  form.querySelectorAll('[data-field]').forEach(el => {
+    const v = data[el.dataset.field];
+    el.value = (v === null || v === undefined) ? '' : v;
+  });
+}
+</script>
+{% endblock %}

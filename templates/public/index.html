@@ -1,0 +1,359 @@
+{% extends "public/base.html" %}
+
+{% block body %}
+<!-- ================= HERO SLIDER ================= -->
+{% if katalog.katalog_hero %}
+<section class="container mt-3">
+  <div class="rf-hero" id="heroCarousel">
+    <div id="heroSlides" class="carousel slide carousel-fade" data-bs-ride="carousel" data-bs-interval="5000">
+      <div class="carousel-inner">
+        {% for slide in slides %}
+        <div class="carousel-item {% if loop.first %}active{% endif %}">
+          <div class="rf-hero-slide {% if slide.gambar %}has-img{% endif %}"
+               {% if slide.gambar %}style="background-image:url('{{ url_for('static', filename='uploads/' + slide.gambar) }}')"{% endif %}>
+            <div class="rf-hero-body">
+              <span class="rf-eyebrow mb-3"><i class="bi bi-flower1 me-1"></i> {{ settings.tagline }}</span>
+              <h1 class="mb-3">{{ slide.judul }}</h1>
+              <p class="text-muted mb-4" style="max-width:480px">{{ slide.subjudul }}</p>
+              <div class="d-flex flex-wrap gap-2">
+                <a href="{{ slide.link_tombol or '/#katalog' }}" class="btn btn-primary btn-lg">{{ slide.teks_tombol }}</a>
+                <a href="{{ url_for('public.track') }}" class="btn btn-outline-rf btn-lg">Lacak Pesanan</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <div class="carousel-item active">
+          <div class="rf-hero-slide">
+            <div class="rf-hero-body">
+              <h1 class="mb-3">{{ settings.nama_toko }}</h1>
+              <p class="text-muted">{{ settings.deskripsi }}</p>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% if slides|length > 1 %}
+      <button class="carousel-control-prev" type="button" data-bs-target="#heroSlides" data-bs-slide="prev">
+        <span class="carousel-control-prev-icon" style="filter:invert(1)"></span>
+      </button>
+      <button class="carousel-control-next" type="button" data-bs-target="#heroSlides" data-bs-slide="next">
+        <span class="carousel-control-next-icon" style="filter:invert(1)"></span>
+      </button>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ================= PENCARIAN + KATALOG ================= -->
+{% if katalog.katalog_produk %}
+<section class="container py-5" id="katalog">
+  <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-4">
+    <div>
+      <span class="rf-chip mb-2">Katalog Bunga</span>
+      <h2 class="fw-bold mb-1">Produk Bunga Potong</h2>
+      <p class="text-muted mb-0">Bunga segar pilihan, harga supplier untuk florist dan acara.</p>
+    </div>
+    <form class="d-flex gap-2" method="get" action="{{ url_for('public.index') }}#katalog">
+      <input type="search" name="q" class="form-control form-control-sm" style="min-width:220px"
+             placeholder="Cari nama atau kategori bunga" value="{{ q }}">
+      <select name="kategori" class="form-select form-select-sm">
+        <option value="">Semua kategori</option>
+        {% for k in kategori_list %}
+        <option value="{{ k }}" {% if kategori == k %}selected{% endif %}>{{ k }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn btn-primary btn-sm px-3"><i class="bi bi-search"></i></button>
+      {% if q or kategori %}
+      <a href="{{ url_for('public.index') }}#katalog" class="btn btn-light btn-sm">Reset</a>
+      {% endif %}
+    </form>
+  </div>
+
+  {% if q or kategori %}
+  <p class="small text-muted">
+    Menampilkan {{ products|length }} produk
+    {% if q %}untuk pencarian "{{ q }}"{% endif %}
+    {% if kategori %}kategori {{ kategori }}{% endif %}.
+  </p>
+  {% endif %}
+
+  <div class="row g-3">
+    {% for p in products %}
+    <div class="col-6 col-md-4 col-lg-3">
+      <div class="rf-card rf-card-hover h-100 d-flex flex-column">
+        <a href="{{ url_for('public.product_detail', product_id=p.id) }}">
+          {% if p.gambar %}
+            <img src="{{ url_for('static', filename='uploads/' + p.gambar) }}" class="rf-product-img" alt="{{ p.nama }}">
+          {% else %}
+            <div class="rf-img-placeholder"><i class="bi bi-flower2"></i></div>
+          {% endif %}
+        </a>
+        <div class="p-3 d-flex flex-column flex-grow-1">
+          <span class="rf-chip mb-2 align-self-start">{{ p.kategori }}</span>
+          <a href="{{ url_for('public.product_detail', product_id=p.id) }}"
+             class="fw-semibold text-dark mb-1">{{ p.nama }}</a>
+          <p class="small text-muted flex-grow-1 mb-2">{{ p.deskripsi[:70] }}{% if p.deskripsi|length > 70 %}...{% endif %}</p>
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <div class="rf-price">{{ rupiah(p.harga) }}</div>
+              <div class="small text-muted">per {{ p.satuan }}</div>
+            </div>
+            {% if p.stok > p.stok_minimum %}
+              <span class="badge bg-success-subtle text-success-emphasis">Stok {{ p.stok }}</span>
+            {% elif p.stok > 0 %}
+              <span class="badge bg-warning-subtle text-warning-emphasis">Sisa {{ p.stok }}</span>
+            {% else %}
+              <span class="badge bg-danger-subtle text-danger-emphasis">Habis</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+      <div class="rf-empty">
+        <i class="bi bi-search d-block fs-2 mb-2"></i>
+        Produk tidak ditemukan. Coba kata kunci lain.
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<!-- ================= STOK PRODUK ================= -->
+{% if katalog.katalog_stok %}
+<section class="py-5" id="stok" style="background:var(--rf-soft)">
+  <div class="container">
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-4">
+      <div>
+        <span class="rf-chip bg-white mb-2">Ketersediaan</span>
+        <h2 class="fw-bold mb-1">Katalog Stok Produk</h2>
+        <p class="text-muted mb-0">Stok diperbarui mengikuti mutasi gudang setiap hari.</p>
+      </div>
+      <a href="{{ url_for('auth.login') }}" class="btn btn-primary">
+        <i class="bi bi-box-seam me-1"></i> Pesan Sekarang
+      </a>
+    </div>
+    <div class="table-responsive rf-card p-0">
+      <table class="table table-rf mb-0 align-middle">
+        <thead>
+          <tr>
+            <th>Produk</th><th>Kategori</th><th>Harga</th>
+            <th class="text-center">Stok</th><th class="text-center">Status</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in stok_list %}
+          <tr>
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                {% if p.gambar %}
+                  <img src="{{ url_for('static', filename='uploads/' + p.gambar) }}" class="rf-thumb" alt="">
+                {% else %}
+                  <div class="rf-thumb d-flex align-items-center justify-content-center text-rf">
+                    <i class="bi bi-flower2"></i>
+                  </div>
+                {% endif %}
+                <div>
+                  <div class="fw-semibold">{{ p.nama }}</div>
+                  <div class="small text-muted">per {{ p.satuan }}</div>
+                </div>
+              </div>
+            </td>
+            <td><span class="rf-chip">{{ p.kategori }}</span></td>
+            <td class="fw-semibold">{{ rupiah(p.harga) }}</td>
+            <td class="text-center">{{ p.stok }}</td>
+            <td class="text-center">
+              {% if p.stok > p.stok_minimum %}
+                <span class="badge bg-success-subtle text-success-emphasis">Tersedia</span>
+              {% elif p.stok > 0 %}
+                <span class="badge bg-warning-subtle text-warning-emphasis">Terbatas</span>
+              {% else %}
+                <span class="badge bg-danger-subtle text-danger-emphasis">Habis</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              <a class="btn btn-sm btn-outline-rf" href="{{ url_for('public.product_detail', product_id=p.id) }}">Detail</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ================= JAM OPERASIONAL ================= -->
+{% if katalog.katalog_jam %}
+<section class="container py-5" id="jam">
+  <div class="row g-4 align-items-stretch">
+    <div class="col-lg-5">
+      <div class="rf-card p-4 h-100">
+        <span class="rf-chip mb-3">Jam Operasional</span>
+        <h3 class="fw-bold mb-3">Waktu layanan kami</h3>
+        <ul class="list-unstyled mb-0">
+          <li class="d-flex justify-content-between border-bottom py-2">
+            <span><i class="bi bi-clock me-2 text-rf"></i>Senin – Sabtu</span>
+            <strong>07.00 – 19.00 WIB</strong>
+          </li>
+          <li class="d-flex justify-content-between border-bottom py-2">
+            <span><i class="bi bi-clock me-2 text-rf"></i>Minggu</span>
+            <strong>08.00 – 14.00 WIB</strong>
+          </li>
+          <li class="d-flex justify-content-between py-2">
+            <span><i class="bi bi-telephone me-2 text-rf"></i>Telepon</span>
+            <strong>{{ settings.telepon }}</strong>
+          </li>
+        </ul>
+        <p class="small text-muted mb-0 mt-3">
+          {{ settings.jam_operasional }} · {{ settings.jam_minggu }}
+        </p>
+      </div>
+    </div>
+    <div class="col-lg-7">
+      <div class="rf-card p-4 h-100" style="background:linear-gradient(135deg,#fff,var(--rf-soft))">
+        <span class="rf-chip bg-white mb-3">Same Day Delivery</span>
+        <h3 class="fw-bold mb-3">Dipesan pagi, tiba hari ini juga</h3>
+        <p class="text-muted">{{ settings.sameday_info }}</p>
+        <div class="row g-3 mt-2">
+          <div class="col-sm-4">
+            <div class="bg-white rounded-3 p-3 h-100">
+              <i class="bi bi-1-circle-fill text-rf fs-5"></i>
+              <div class="fw-semibold mt-2 small">Pilih & Daftar</div>
+              <div class="small text-muted">Registrasi akun sebelum checkout.</div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="bg-white rounded-3 p-3 h-100">
+              <i class="bi bi-2-circle-fill text-rf fs-5"></i>
+              <div class="fw-semibold mt-2 small">Konfirmasi</div>
+              <div class="small text-muted">Admin memverifikasi pesanan Anda.</div>
+            </div>
+          </div>
+          <div class="col-sm-4">
+            <div class="bg-white rounded-3 p-3 h-100">
+              <i class="bi bi-3-circle-fill text-rf fs-5"></i>
+              <div class="fw-semibold mt-2 small">QC & Kirim</div>
+              <div class="small text-muted">Diperiksa QC lalu dikirim hari ini.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ================= TESTIMONI ================= -->
+{% if katalog.katalog_testimoni %}
+<section class="py-5" id="testimoni" style="background:#fff;border-top:1px solid rgba(44,32,36,.06)">
+  <div class="container">
+    <div class="text-center mb-4">
+      <span class="rf-chip mb-2">Testimoni</span>
+      <h2 class="fw-bold mb-1">Kata pelanggan kami</h2>
+      <p class="text-muted mb-0">Dipercaya florist, hotel, dan penyelenggara acara.</p>
+    </div>
+    <div id="testiSlides" class="carousel slide" data-bs-ride="carousel" data-bs-interval="6000">
+      <div class="carousel-inner">
+        {% for chunk in testimonials|batch(3) %}
+        <div class="carousel-item {% if loop.first %}active{% endif %}">
+          <div class="row g-3 px-lg-5">
+            {% for t in chunk %}
+            <div class="col-md-4">
+              <div class="rf-card p-4 h-100">
+                <div class="rf-stars mb-2">{% for _ in range(t.rating) %}<i class="bi bi-star-fill"></i>{% endfor %}</div>
+                <p class="rf-quote">"{{ t.isi }}"</p>
+                <div class="d-flex align-items-center gap-2 mt-3">
+                  <span class="rf-avatar">{{ t.nama[:1]|upper }}</span>
+                  <div class="small fw-semibold">{{ t.nama }}</div>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% else %}
+        <div class="carousel-item active"><div class="rf-empty">Belum ada testimoni.</div></div>
+        {% endfor %}
+      </div>
+      {% if testimonials|length > 3 %}
+      <button class="carousel-control-prev" type="button" data-bs-target="#testiSlides" data-bs-slide="prev">
+        <span class="carousel-control-prev-icon" style="filter:invert(1)"></span>
+      </button>
+      <button class="carousel-control-next" type="button" data-bs-target="#testiSlides" data-bs-slide="next">
+        <span class="carousel-control-next-icon" style="filter:invert(1)"></span>
+      </button>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ================= SOSIAL MEDIA ================= -->
+{% if katalog.katalog_sosial %}
+<section class="container py-5" id="sosial">
+  <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-4">
+    <div>
+      <span class="rf-chip mb-2">Sosial Media</span>
+      <h2 class="fw-bold mb-1">Ikuti keseharian kami</h2>
+      <p class="text-muted mb-0">Konten Instagram & TikTok Rasty Florist.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{{ settings.instagram }}" target="_blank" rel="noopener" class="btn btn-outline-rf btn-sm">
+        <i class="bi bi-instagram me-1"></i> Instagram
+      </a>
+      <a href="{{ settings.tiktok }}" target="_blank" rel="noopener" class="btn btn-outline-rf btn-sm">
+        <i class="bi bi-tiktok me-1"></i> TikTok
+      </a>
+    </div>
+  </div>
+  <div id="socialSlides" class="carousel slide" data-bs-ride="carousel" data-bs-interval="5000">
+    <div class="carousel-inner">
+      {% for chunk in socials|batch(4) %}
+      <div class="carousel-item {% if loop.first %}active{% endif %}">
+        <div class="row g-3">
+          {% for s in chunk %}
+          <div class="col-6 col-md-3">
+            <a href="{{ s.link }}" target="_blank" rel="noopener" class="rf-social-card d-block h-100">
+              {% if s.gambar %}
+                <img src="{{ url_for('static', filename='uploads/' + s.gambar) }}" alt="">
+              {% endif %}
+              <div class="rf-social-cap">
+                <i class="bi bi-{{ 'instagram' if s.platform == 'instagram' else 'tiktok' }} me-1"></i>
+                {{ s.judul }}
+              </div>
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% else %}
+      <div class="carousel-item active"><div class="rf-empty">Belum ada konten sosial media.</div></div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ================= CTA ================= -->
+<section class="container pb-5">
+  <div class="rf-card p-4 p-md-5 text-center" style="background:var(--rf-primary);color:#fff">
+    <h2 class="fw-bold mb-2">Siap memesan bunga hari ini?</h2>
+    <p class="mb-4" style="opacity:.9">
+      Daftar akun terlebih dahulu, lalu checkout dan pantau pesanan Anda sampai diterima.
+    </p>
+    <div class="d-flex justify-content-center flex-wrap gap-2">
+      {% if current_user %}
+        <a href="{{ url_for('customer.new_order') }}" class="btn btn-light btn-lg text-rf fw-semibold">Buat Pesanan</a>
+      {% else %}
+        <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg text-rf fw-semibold">Daftar Akun</a>
+        <a href="{{ url_for('auth.login') }}" class="btn btn-outline-light btn-lg">Masuk</a>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

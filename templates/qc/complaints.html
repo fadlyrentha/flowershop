@@ -1,0 +1,41 @@
+{% extends "panel_base.html" %}
+{% block title %}Data Komplain QC{% endblock %}
+{% block heading %}Data Komplain{% endblock %}
+{% block subheading %}Hanya dapat melihat bukti foto, video, dan tulisan keluhan{% endblock %}
+{% block content %}
+<div class="alert alert-light border small py-2">
+  <i class="bi bi-eye me-1"></i> Mode lihat saja — QC tidak dapat mengubah data komplain.
+</div>
+{% for c in rows %}
+<div class="rf-card p-3 p-md-4 mb-3">
+  <div class="d-flex justify-content-between flex-wrap gap-2 mb-2">
+    <div>
+      <div class="fw-bold">{{ c.subjek }}</div>
+      <div class="small text-muted">{{ c.kode }} · {{ c.nama_pelanggan }} · {{ c.created_at[:16] }}</div>
+    </div>
+    <span class="rf-chip {{ 'gray' if c.status == 'Baru' }}">{{ c.status }}</span>
+  </div>
+  <p class="small mb-2">{{ c.isi }}</p>
+  <div class="d-flex flex-wrap gap-2">
+    {% if c.foto %}
+    <a href="{{ url_for('static', filename='uploads/' ~ c.foto) }}" target="_blank">
+      <img src="{{ url_for('static', filename='uploads/' ~ c.foto) }}" class="rounded"
+           style="width:120px;height:88px;object-fit:cover" alt="Bukti foto">
+    </a>
+    {% endif %}
+    {% if c.video %}
+    <video src="{{ url_for('static', filename='uploads/' ~ c.video) }}" controls
+           style="width:220px;height:130px;border-radius:8px;background:#000"></video>
+    {% endif %}
+    {% if not c.foto and not c.video %}
+    <span class="small text-muted">Tanpa lampiran bukti.</span>
+    {% endif %}
+  </div>
+  {% if c.tanggapan %}
+  <div class="bg-rf-soft rounded p-2 small mt-2"><strong>Tanggapan:</strong> {{ c.tanggapan }}</div>
+  {% endif %}
+</div>
+{% else %}
+<div class="rf-card p-4"><div class="rf-empty">Belum ada komplain.</div></div>
+{% endfor %}
+{% endblock %}

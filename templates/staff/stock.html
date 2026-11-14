@@ -1,0 +1,78 @@
+{% extends "panel_base.html" %}
+{% block title %}Stok{% endblock %}
+{% block heading %}{% if 'stok_mutasi' in features_aktif %}Stok Masuk & Keluar{% else %}Stok Produk{% endif %}{% endblock %}
+{% block subheading %}{% if 'stok_mutasi' in features_aktif %}Catat mutasi stok dan pantau stok terkini{% else %}Pantau stok terkini{% endif %}{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-4">
+    {% if 'stok_mutasi' in features_aktif %}
+    <div class="rf-card p-4 mb-3">
+      <h6 class="fw-bold mb-3">Catat mutasi stok</h6>
+      <form method="post" class="row g-3">
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Produk</label>
+          <select name="product_id" class="form-select" required>
+            <option value="">— Pilih produk —</option>
+            {% for p in products %}<option value="{{ p.id }}">{{ p.nama }} (stok {{ p.stok }})</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-6">
+          <label class="form-label small fw-semibold">Jenis</label>
+          <select name="tipe" class="form-select">
+            <option value="masuk">Masuk</option><option value="keluar">Keluar</option>
+          </select>
+        </div>
+        <div class="col-6">
+          <label class="form-label small fw-semibold">Jumlah</label>
+          <input type="number" name="qty" class="form-control" min="1" value="1" required>
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Keterangan</label>
+          <input name="keterangan" class="form-control" placeholder="Contoh: restock dari kebun">
+        </div>
+        <div class="col-12"><button class="btn btn-primary w-100">Simpan Mutasi</button></div>
+      </form>
+    </div>
+    {% endif %}
+    <div class="rf-card p-3">
+      <h6 class="fw-bold mb-2 small text-muted text-uppercase">Stok terkini</h6>
+      <div style="max-height:320px;overflow:auto">
+        {% for p in products %}
+        <div class="d-flex justify-content-between py-2 border-bottom small">
+          <span>{{ p.nama }}</span>
+          <strong class="{{ 'text-danger' if p.stok <= p.stok_minimum }}">{{ p.stok }}</strong>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="rf-card p-3 p-md-4">
+      <h6 class="fw-bold mb-3">Riwayat mutasi terakhir</h6>
+      <div class="table-responsive">
+        <table class="table table-rf align-middle mb-0">
+          <thead><tr><th>Tanggal</th><th>Produk</th><th>Jenis</th><th class="text-center">Qty</th><th>Keterangan</th></tr></thead>
+          <tbody>
+            {% for m in moves %}
+            <tr>
+              <td class="small text-muted text-nowrap">{{ m.created_at[:16] }}</td>
+              <td class="small fw-semibold">{{ m.produk }}</td>
+              <td>
+                <span class="badge {{ 'bg-success-subtle text-success-emphasis' if m.tipe == 'masuk' else 'bg-danger-subtle text-danger-emphasis' }}">
+                  {{ m.tipe }}
+                </span>
+              </td>
+              <td class="text-center">{{ m.qty }}</td>
+              <td class="small text-muted">{{ m.keterangan }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5"><div class="rf-empty">Belum ada mutasi.</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

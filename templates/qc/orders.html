@@ -1,0 +1,43 @@
+{% extends "panel_base.html" %}
+{% block title %}Daftar Order QC{% endblock %}
+{% block heading %}List Order Pembelian{% endblock %}
+{% block subheading %}Order dari karyawan yang menunggu pengecekan produk{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <a class="btn btn-sm {{ 'btn-primary' if not status else 'btn-light' }}" href="{{ url_for('qc.orders') }}">Semua</a>
+  {% for s in ['Menunggu Konfirmasi','Diproses','Quality Kontrol','Siap Kirim','Dikirim','Selesai','Dibatalkan'] %}
+  <a class="btn btn-sm {{ 'btn-primary' if status == s else 'btn-light' }}" href="{{ url_for('qc.orders', status=s) }}">{{ s }}</a>
+  {% endfor %}
+</div>
+
+<div class="rf-card p-0 overflow-hidden">
+  <div class="table-responsive">
+    <table class="table table-rf align-middle mb-0">
+      <thead><tr><th>Kode</th><th>Pelanggan</th><th>Tanggal</th><th class="text-center">Item</th><th class="text-center">Belum Dicek</th><th>Status</th><th class="text-end">Aksi</th></tr></thead>
+      <tbody>
+        {% for o in rows %}
+        <tr>
+          <td class="small fw-semibold">{{ o.kode }}</td>
+          <td class="small">{{ o.nama_pelanggan }}</td>
+          <td class="small text-muted">{{ o.created_at[:10] }}</td>
+          <td class="text-center small">{{ o.jumlah_item }}</td>
+          <td class="text-center">
+            {% if o.belum %}<span class="badge bg-warning-subtle text-warning-emphasis">{{ o.belum }}</span>
+            {% else %}<span class="badge bg-success-subtle text-success-emphasis">Selesai</span>{% endif %}
+          </td>
+          <td><span class="rf-chip">{{ o.status }}</span></td>
+          <td class="text-end text-nowrap">
+            {% if 'ganti_produk' in features_aktif %}
+            <a class="btn btn-sm btn-light" href="{{ url_for('qc.replace_product', order_id=o.id) }}" title="Ganti Produk"><i class="bi bi-arrow-left-right"></i></a>
+            {% endif %}
+            <a class="btn btn-sm btn-primary" href="{{ url_for('qc.verify', order_id=o.id) }}">Verifikasi</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7"><div class="rf-empty">Tidak ada order.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

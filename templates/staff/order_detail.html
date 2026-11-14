@@ -1,0 +1,137 @@
+{% extends "panel_base.html" %}
+{% block title %}{{ order.kode }}{% endblock %}
+{% block heading %}Pesanan {{ order.kode }}{% endblock %}
+{% block subheading %}{{ order.nama_pelanggan }} · {{ order.created_at }}{% endblock %}
+{% block content %}
+{% set gudang = current_user.role == 'staff_gudang' %}
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="rf-card p-3 p-md-4 mb-3">
+      <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <h6 class="fw-bold mb-0">Rincian produk</h6>
+        <div class="d-flex gap-2">
+          {% if 'label' in features_aktif %}
+          <a class="btn btn-sm btn-outline-rf" target="_blank" href="{{ url_for('staff.order_label', order_id=order.id) }}">
+            <i class="bi bi-tag me-1"></i> Cetak Label
+          </a>
+          {% endif %}
+          {% if 'qc_list' in features_aktif %}
+          <a class="btn btn-sm btn-outline-rf" target="_blank" href="{{ url_for('staff.order_qc_list', order_id=order.id) }}">
+            <i class="bi bi-list-check me-1"></i> Checklist QC
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-rf align-middle">
+          {% if gudang %}
+          <thead><tr><th>Produk</th><th class="text-center">Qty</th><th>QC</th></tr></thead>
+          {% else %}
+          <thead><tr><th>Produk</th><th class="text-center">Qty</th><th class="text-end">Harga</th><th class="text-end">Subtotal</th><th>QC</th></tr></thead>
+          {% endif %}
+          <tbody>
+            {% for i in items %}
+            <tr>
+              <td class="fw-semibold">{{ i.nama_produk }}</td>
+              <td class="text-center">{{ i.qty }}</td>
+              {% if not gudang %}
+              <td class="text-end">{{ rupiah(i.harga) }}</td>
+              <td class="text-end">{{ rupiah(i.subtotal) }}</td>
+              {% endif %}
+              <td><span class="rf-chip {{ 'gray' if i.qc_status == 'Belum Dicek' }}">{{ i.qc_status }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if not gudang %}
+      <div class="d-flex justify-content-between small"><span class="text-muted">Subtotal</span><span>{{ rupiah(order.subtotal) }}</span></div>
+      <div class="d-flex justify-content-between small"><span class="text-muted">Ongkir</span><span>{{ rupiah(order.ongkir) }}</span></div>
+      <div class="d-flex justify-content-between fw-bold border-top pt-2 mt-1"><span>Total</span><span class="text-rf">{{ rupiah(order.total) }}</span></div>
+      {% endif %}
+    </div>
+
+    <div class="rf-card p-3 p-md-4">
+      <h6 class="fw-bold mb-3">Update status pesanan</h6>
+      <form method="post" action="{{ url_for('staff.order_status', order_id=order.id) }}" class="d-flex flex-wrap gap-2">
+        <select name="status" class="form-select form-select-sm" style="max-width:260px">
+          {% for s in ORDER_STATUS %}<option value="{{ s }}" {% if order.status == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+        </select>
+        <button class="btn btn-primary btn-sm">Simpan Status</button>
+      </form>
+      <hr>
+      <div class="row g-2 small">
+        <div class="col-md-6"><span class="text-muted">Telepon:</span> {{ order.telepon }}</div>
+        <div class="col-md-6"><span class="text-muted">Pengiriman:</span> {{ order.pengiriman }}</div>
+        <div class="col-md-6"><span class="text-muted">Metode:</span> {{ order.metode_bayar }}</div>
+        <div class="col-md-6"><span class="text-muted">Status bayar:</span> {{ order.status_bayar }}</div>
+        <div class="col-12"><span class="text-muted">Alamat:</span> {{ order.alamat }}</div>
+        {% if order.catatan %}<div class="col-12"><span class="text-muted">Catatan:</span> {{ order.catatan }}</div>{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="rf-card p-3 p-md-4">
+      <h6 class="fw-bold mb-3">Aksi cepat</h6>
+      <div class="d-grid gap-2">
+        {% if not gudang %}
+        <a class="btn btn-success" target="_blank" rel="noopener"
+           href="{{ wa_link(order.telepon, 'Halo ' ~ order.nama_pelanggan ~ ', kami dari ' ~ settings.nama_toko ~ ' ingin konfirmasi pesanan ' ~ order.kode ~ ' total ' ~ rupiah(order.total) ~ '.') }}">
+          <i class="bi bi-whatsapp me-1"></i> Konfirmasi WhatsApp
+        </a>
+        {% endif %}
+        {% if invoice and current_user.role not in ('staff_admin', 'staff_gudang') %}
+        <a class="btn btn-outline-rf" target="_blank" href="{{ url_for('finance.invoice_print', iid=invoice.id) }}">
+          <i class="bi bi-printer me-1"></i> Cetak PO / Invoice
+        </a>
+        {% endif %}
+        <button class="btn btn-outline-rf" data-bs-toggle="modal" data-bs-target="#notifModal">
+          <i class="bi bi-bell me-1"></i> Notifikasi Order
+        </button>
+        <form method="post" action="{{ url_for('staff.order_delete', order_id=order.id) }}"
+              onsubmit="return confirm('Hapus pesanan {{ order.kode }}? Stok akan dikembalikan.')">
+          <button class="btn btn-light text-danger w-100"><i class="bi bi-trash me-1"></i> Hapus Pesanan</button>
+        </form>
+      </div>
+    </div>
+    <div class="rf-card p-3 mt-3 small">
+      <div class="fw-semibold mb-2">Riwayat status</div>
+      <ul class="rf-steps mb-0" style="font-size:.8rem">
+        {% set cur = ORDER_STATUS.index(order.status) if order.status in ORDER_STATUS else 0 %}
+        {% for s in ORDER_STATUS %}
+        <li class="{{ 'done' if loop.index0 <= cur else '' }}" style="padding-bottom:.9rem">{{ s }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="notifModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title fw-bold">Notifikasi Order</h6>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body small">
+        <pre class="bg-light p-3 rounded mb-0" style="white-space:pre-wrap">Pesanan {{ order.kode }}
+Pelanggan : {{ order.nama_pelanggan }}
+Telepon   : {{ order.telepon }}
+Status    : {{ order.status }}
+{% for i in items %}- {{ i.nama_produk }} x{{ i.qty }} ({{ i.qc_status }})
+{% endfor %}{% if not gudang %}Total     : {{ rupiah(order.total) }}{% endif %}</pre>
+      </div>
+      <div class="modal-footer">
+        {% if not gudang %}
+        <a class="btn btn-success btn-sm" target="_blank" rel="noopener"
+           href="{{ wa_link(order.telepon, 'Halo ' ~ order.nama_pelanggan ~ ', update pesanan ' ~ order.kode ~ ': ' ~ order.status ~ '.') }}">
+          <i class="bi bi-whatsapp me-1"></i> Kirim WhatsApp
+        </a>
+        {% endif %}
+        <button class="btn btn-light btn-sm" data-bs-dismiss="modal">Tutup</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

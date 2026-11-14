@@ -1,0 +1,84 @@
+{% extends "panel_base.html" %}
+{% block title %}Dashboard Staff{% endblock %}
+{% block heading %}Dashboard Staff{% endblock %}
+{% block subheading %}Ringkasan operasional toko hari ini{% endblock %}
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="rf-stat d-flex gap-3 align-items-center">
+      <div class="icon"><i class="bi bi-bag-check"></i></div>
+      <div><div class="label">Total Pesanan</div><div class="value">{{ stats.pesanan }}</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="rf-stat d-flex gap-3 align-items-center">
+      <div class="icon"><i class="bi bi-inbox"></i></div>
+      <div><div class="label">Perlu Konfirmasi</div><div class="value">{{ stats.baru }}</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="rf-stat d-flex gap-3 align-items-center">
+      <div class="icon"><i class="bi bi-people"></i></div>
+      <div><div class="label">Pelanggan</div><div class="value">{{ stats.pelanggan }}</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="rf-stat d-flex gap-3 align-items-center">
+      <div class="icon"><i class="bi bi-exclamation-triangle"></i></div>
+      <div><div class="label">Komplain Baru</div><div class="value">{{ stats.komplain }}</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="rf-card p-3 p-md-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-bold mb-0">Pesanan terbaru</h6>
+        <a href="{{ url_for('staff.orders') }}" class="small">Semua pesanan</a>
+      </div>
+      <div class="table-responsive rf-scroll-x">
+        <table class="table table-rf align-middle mb-0">
+          <thead><tr><th>Kode</th><th>Pelanggan</th><th class="text-end">Total</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            {% for o in orders %}
+            <tr>
+              <td class="fw-semibold small">{{ o.kode }}</td>
+              <td class="small">{{ o.nama_pelanggan }}</td>
+              <td class="text-end small">{{ rupiah(o.total) }}</td>
+              <td><span class="rf-chip">{{ o.status }}</span></td>
+              <td class="text-end">
+                <a class="btn btn-sm btn-light" href="{{ url_for('staff.order_detail', order_id=o.id) }}"><i class="bi bi-eye"></i></a>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5"><div class="rf-empty">Belum ada pesanan.</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="rf-card p-3 p-md-4 mb-3">
+      <h6 class="fw-bold mb-3"><i class="bi bi-box-seam me-1 text-rf"></i>Stok perlu restock</h6>
+      {% for p in menipis %}
+      <div class="d-flex justify-content-between align-items-center py-2 border-bottom small">
+        <div>
+          <div class="fw-semibold">{{ p.nama }}</div>
+          <div class="text-muted">min. {{ p.stok_minimum }} {{ p.satuan }}</div>
+        </div>
+        <span class="badge bg-danger-subtle text-danger-emphasis">{{ p.stok }}</span>
+      </div>
+      {% else %}
+      <div class="small text-muted">Semua stok aman.</div>
+      {% endfor %}
+    </div>
+    <div class="rf-card p-3 p-md-4">
+      <h6 class="fw-bold mb-2">Omzet selesai</h6>
+      <div class="h4 fw-bold text-rf mb-0">{{ rupiah(stats.omzet) }}</div>
+      <div class="small text-muted">Dari pesanan berstatus Selesai</div>
+    </div>
+  </div>
+</div>
+{% endblock %}

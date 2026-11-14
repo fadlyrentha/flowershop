@@ -1,0 +1,162 @@
+{% extends "panel_base.html" %}
+{% block title %}Ganti Produk{% endblock %}
+{% block heading %}Ganti Produk Pesanan{% endblock %}
+{% block subheading %}Tukar produk yang tidak memenuhi kebutuhan dengan produk lain{% endblock %}
+{% block content %}
+<div class="rf-card p-3 p-md-4 mb-3">
+  <form method="get" class="d-flex flex-wrap gap-2 align-items-end">
+    <div class="flex-grow-1" style="min-width:240px">
+      <label class="form-label small fw-semibold">Pilih pesanan</label>
+      <select name="order_id" class="form-select form-select-sm" required>
+        <option value="">— Pilih pesanan —</option>
+        {% for o in orders %}
+        <option value="{{ o.id }}" {% if order and order.id == o.id %}selected{% endif %}>
+          {{ o.kode }} · {{ o.nama_pelanggan }} ({{ o.status }})
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn btn-sm btn-primary">Tampilkan</button>
+  </form>
+</div>
+
+{% if order %}
+<div class="rf-card p-3 p-md-4">
+  <div class="d-flex justify-content-between flex-wrap gap-2 mb-3">
+    <div>
+      <div class="fw-bold">{{ order.kode }}</div>
+      <div class="small text-muted">{{ order.nama_pelanggan }} · {{ order.status }}</div>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+      <span class="rf-chip">{{ rupiah(order.total) }}</span>
+      <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#tambahModal">
+        <i class="bi bi-plus-lg me-1"></i> Tambah Produk
+      </button>
+    </div>
+  </div>
+
+  <div class="table-responsive rf-scroll-x">
+    <table class="table table-rf align-middle mb-0">
+      <thead><tr><th>Produk</th><th class="text-center">Qty</th><th class="text-end">Subtotal</th><th>QC</th><th class="text-end">Aksi</th></tr></thead>
+      <tbody>
+        {% for i in items %}
+        <tr>
+          <td class="small fw-semibold">{{ i.nama_produk }}</td>
+          <td class="text-center small">{{ i.qty }}</td>
+          <td class="text-end small">{{ rupiah(i.subtotal) }}</td>
+          <td><span class="rf-chip {{ 'gray' if i.qc_status == 'Belum Dicek' }}">{{ i.qc_status }}</span></td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-outline-rf" data-bs-toggle="modal" data-bs-target="#gantiModal"
+                    onclick='isiGanti({{ i|tojson }})'>
+              <i class="bi bi-arrow-left-right me-1"></i> Ganti
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5"><div class="rf-empty">Pesanan ini tidak memiliki item.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% if order %}
+<div class="modal fade" id="tambahModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <form class="modal-content" method="post">
+      <input type="hidden" name="aksi" value="tambah">
+      <input type="hidden" name="order_id" value="{{ order.id }}">
+      <div class="modal-header">
+        <h6 class="modal-title fw-bold">Tambah Produk ke Pesanan</h6>
+        <button class="btn-close" data-bs-dismiss="modal" type="button"></button>
+      </div>
+      <div class="modal-body row g-3">
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Produk</label>
+          <select name="product_id" class="form-select" required>
+            <option value="">— Pilih produk —</option>
+            {% for p in products %}
+            <option value="{{ p.id }}">{{ p.nama }} · {{ rupiah(p.harga) }}/{{ p.satuan }} (stok {{ p.stok }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6">
+          <label class="form-label small fw-semibold">Jumlah</label>
+          <input type="number" name="qty" class="form-control" min="1" value="1" required>
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Catatan</label>
+          <input name="catatan" class="form-control" placeholder="Contoh: tambahan permintaan pelanggan">
+        </div>
+        <div class="col-12">
+          <div class="alert alert-warning py-2 small mb-0">
+            Stok produk dikurangi, total pesanan dan faktur dihitung ulang otomatis.
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-primary">Tambah Produk</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<div class="modal fade" id="gantiModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <form class="modal-content" method="post">
+      <input type="hidden" name="aksi" value="ganti">
+      <div class="modal-header">
+        <h6 class="modal-title fw-bold">Ganti Produk</h6>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body row g-3">
+        <input type="hidden" name="item_id" id="g_item">
+        <div class="col-12">
+          <div class="small text-muted">Produk saat ini</div>
+          <div class="fw-semibold" id="g_lama">—</div>
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Produk pengganti</label>
+          <select name="product_id" class="form-select" required>
+            <option value="">— Pilih produk —</option>
+            {% for p in products %}
+            <option value="{{ p.id }}">{{ p.nama }} · {{ rupiah(p.harga) }}/{{ p.satuan }} (stok {{ p.stok }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6">
+          <label class="form-label small fw-semibold">Jumlah</label>
+          <input type="number" name="qty" id="g_qty" class="form-control" min="1" value="1" required>
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Alasan penggantian</label>
+          <input name="alasan" class="form-control" placeholder="Contoh: bunga tidak segar / stok habis">
+        </div>
+        <div class="col-12">
+          <div class="alert alert-warning py-2 small mb-0">
+            Stok produk lama dikembalikan, stok produk pengganti dikurangi, dan total pesanan
+            dihitung ulang otomatis.
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-primary">Simpan Penggantian</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function isiGanti(item) {
+  document.getElementById('g_item').value = item.id;
+  document.getElementById('g_lama').textContent = item.nama_produk + ' × ' + item.qty;
+  document.getElementById('g_qty').value = item.qty;
+}
+</script>
+{% endblock %}

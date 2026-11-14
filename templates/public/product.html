@@ -1,0 +1,89 @@
+{% extends "public/base.html" %}
+{% block title %}{{ product.nama }} — {{ settings.nama_toko }}{% endblock %}
+{% block body %}
+<div class="container py-4">
+  <nav aria-label="breadcrumb">
+    <ol class="breadcrumb small">
+      <li class="breadcrumb-item"><a href="{{ url_for('public.index') }}">Beranda</a></li>
+      <li class="breadcrumb-item"><a href="{{ url_for('public.index') }}#katalog">Katalog</a></li>
+      <li class="breadcrumb-item active">{{ product.nama }}</li>
+    </ol>
+  </nav>
+
+  <div class="row g-4">
+    <div class="col-lg-6">
+      <div class="rf-card overflow-hidden">
+        {% if product.gambar %}
+          <img src="{{ url_for('static', filename='uploads/' + product.gambar) }}" class="w-100" style="aspect-ratio:4/3;object-fit:cover" alt="{{ product.nama }}">
+        {% else %}
+          <div class="rf-img-placeholder" style="aspect-ratio:4/3;font-size:4rem"><i class="bi bi-flower2"></i></div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <span class="rf-chip mb-2">{{ product.kategori }}</span>
+      <h1 class="fw-bold h3">{{ product.nama }}</h1>
+      <div class="rf-price fs-4 mb-2">{{ rupiah(product.harga) }} <span class="fs-6 text-muted fw-normal">/ {{ product.satuan }}</span></div>
+      <p class="text-muted">{{ product.deskripsi }}</p>
+
+      <div class="d-flex gap-2 my-3">
+        {% if product.stok > product.stok_minimum %}
+          <span class="badge bg-success-subtle text-success-emphasis">Tersedia {{ product.stok }} {{ product.satuan }}</span>
+        {% elif product.stok > 0 %}
+          <span class="badge bg-warning-subtle text-warning-emphasis">Stok terbatas {{ product.stok }} {{ product.satuan }}</span>
+        {% else %}
+          <span class="badge bg-danger-subtle text-danger-emphasis">Stok habis</span>
+        {% endif %}
+        <span class="badge bg-light text-muted">Minimum order 1 {{ product.satuan }}</span>
+      </div>
+
+      <div class="rf-card p-3 mb-3">
+        <div class="small text-muted mb-2">
+          <i class="bi bi-shield-check text-rf me-1"></i>
+          Pembelian dilakukan melalui akun pelanggan. Registrasi diperlukan sebelum checkout.
+        </div>
+        {% if current_user and current_user.role == 'pelanggan' %}
+          <a href="{{ url_for('customer.new_order') }}" class="btn btn-primary w-100">
+            <i class="bi bi-cart-plus me-1"></i> Pesan Produk Ini
+          </a>
+        {% elif current_user %}
+          <a href="{{ panel_url }}" class="btn btn-outline-rf w-100">Buka Panel</a>
+        {% else %}
+          <div class="d-flex gap-2">
+            <a href="{{ url_for('auth.register') }}" class="btn btn-primary flex-fill">Daftar untuk Memesan</a>
+            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-rf flex-fill">Masuk</a>
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="row g-2 small text-muted">
+        <div class="col-6"><i class="bi bi-truck me-1 text-rf"></i> Same day sebelum 14.00</div>
+        <div class="col-6"><i class="bi bi-snow me-1 text-rf"></i> Rantai dingin</div>
+        <div class="col-6"><i class="bi bi-check2-circle me-1 text-rf"></i> Lewat Quality Kontrol</div>
+        <div class="col-6"><i class="bi bi-receipt me-1 text-rf"></i> Invoice resmi</div>
+      </div>
+    </div>
+  </div>
+
+  {% if related %}
+  <h5 class="fw-bold mt-5 mb-3">Produk serupa</h5>
+  <div class="row g-3">
+    {% for p in related %}
+    <div class="col-6 col-md-3">
+      <div class="rf-card rf-card-hover h-100">
+        {% if p.gambar %}
+          <img src="{{ url_for('static', filename='uploads/' + p.gambar) }}" class="rf-product-img" alt="">
+        {% else %}
+          <div class="rf-img-placeholder"><i class="bi bi-flower2"></i></div>
+        {% endif %}
+        <div class="p-3">
+          <a href="{{ url_for('public.product_detail', product_id=p.id) }}" class="fw-semibold text-dark small">{{ p.nama }}</a>
+          <div class="rf-price small mt-1">{{ rupiah(p.harga) }}</div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

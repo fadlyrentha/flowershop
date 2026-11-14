@@ -1,0 +1,152 @@
+{% extends "panel_base.html" %}
+{% block title %}Pesanan Manual{% endblock %}
+{% block heading %}Formulir Pembelian Manual{% endblock %}
+{% block subheading %}Input pesanan untuk pelanggan, bisa lebih dari satu produk{% endblock %}
+{% block content %}
+<form method="post" id="orderForm">
+  <div class="row g-3">
+    <div class="col-lg-8">
+      <div class="rf-card p-3 p-md-4 mb-3">
+        <h6 class="fw-bold mb-3">Daftar produk</h6>
+        <div id="rows"></div>
+        <button type="button" class="btn btn-sm btn-outline-rf mt-2" onclick="addRow()">
+          <i class="bi bi-plus-lg me-1"></i> Tambah Produk
+        </button>
+      </div>
+
+      <div class="rf-card p-3 p-md-4">
+        <h6 class="fw-bold mb-3">Data pelanggan</h6>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Pelanggan terdaftar</label>
+            <select name="user_id" class="form-select" id="custSelect">
+              <option value="">— Pelanggan umum / walk-in —</option>
+              {% for c in customers_list %}
+              <option value="{{ c.id }}" data-nama="{{ c.nama }}" data-telp="{{ c.telepon }}" data-alamat="{{ c.alamat }}">
+                {{ c.nama }} ({{ c.username }})
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Nama penerima</label>
+            <input name="nama_pelanggan" id="namaPel" class="form-control" placeholder="Nama penerima">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Telepon</label>
+            <input name="telepon" id="telpPel" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Metode bayar</label>
+            <select name="metode_bayar" class="form-select">
+              <option>Transfer Bank</option><option>QRIS</option><option>Tunai (COD)</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Kategori tagihan</label>
+            <select name="kode_tagihan" class="form-select">
+              {% for k in KODE_TAGIHAN %}<option value="{{ k }}">{{ k }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold">Alamat</label>
+            <textarea name="alamat" id="alamatPel" class="form-control" rows="2"></textarea>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Cara penerimaan</label>
+            <select name="pengiriman" class="form-select" id="modeKirim">
+              <option value="Dikirim">Dikirim (kurir)</option>
+              <option value="Diambil">Diambil di toko</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Catatan</label>
+            <input name="catatan" class="form-control">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="rf-card p-3 p-md-4" style="position:sticky;top:80px">
+        <h6 class="fw-bold mb-3">Ringkasan</h6>
+        <div id="summary" class="small mb-2"></div>
+        <hr>
+        <div class="d-flex justify-content-between small"><span class="text-muted">Subtotal</span><span id="subtotal">Rp 0</span></div>
+        <div class="d-flex justify-content-between small"><span class="text-muted">Ongkir</span><span id="ongkir">Rp 0</span></div>
+        <div class="d-flex justify-content-between fw-bold mt-2"><span>Total</span><span class="text-rf" id="total">Rp 0</span></div>
+        <button class="btn btn-primary w-100 mt-3"><i class="bi bi-check2-circle me-1"></i> Simpan Pesanan</button>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PRODUCTS = {{ products | tojson }};
+const rupiah = n => 'Rp ' + Number(n).toLocaleString('id-ID');
+
+function addRow() {
+  const wrap = document.getElementById('rows');
+  const div = document.createElement('div');
+  div.className = 'row g-2 align-items-center mb-2 order-row';
+  div.innerHTML = `
+    <div class="col-12 col-md-6">
+      <select class="form-select form-select-sm prod" name="product_id[]" required>
+        <option value="">— Pilih produk —</option>
+        ${PRODUCTS.map(p => `<option value="${p.id}" data-harga="${p.harga}" data-stok="${p.stok}">
+          ${p.nama} · ${rupiah(p.harga)} (stok ${p.stok})</option>`).join('')}
+      </select>
+    </div>
+    <div class="col-4 col-md-2"><input type="number" class="form-control form-control-sm qty" name="qty[]" value="1" min="1" required></div>
+    <div class="col-6 col-md-3"><div class="small text-muted line-total">Rp 0</div></div>
+    <div class="col-2 col-md-1 text-end">
+      <button type="button" class="btn btn-sm btn-light text-danger" onclick="removeRow(this)"><i class="bi bi-trash"></i></button>
+    </div>`;
+  wrap.appendChild(div);
+  div.querySelector('.prod').addEventListener('change', recalc);
+  div.querySelector('.qty').addEventListener('input', recalc);
+  recalc();
+}
+
+function removeRow(btn) {
+  if (document.querySelectorAll('.order-row').length <= 1) return;
+  btn.closest('.order-row').remove();
+  recalc();
+}
+
+function recalc() {
+  let subtotal = 0; const lines = [];
+  document.querySelectorAll('.order-row').forEach(row => {
+    const sel = row.querySelector('.prod');
+    const qty = parseInt(row.querySelector('.qty').value) || 0;
+    const opt = sel.options[sel.selectedIndex];
+    const harga = opt ? parseInt(opt.dataset.harga || 0) : 0;
+    const stok = opt ? parseInt(opt.dataset.stok || 0) : 0;
+    const line = harga * qty;
+    row.querySelector('.line-total').innerHTML = rupiah(line) +
+      (stok && qty > stok ? ' <span class="text-danger">(stok kurang)</span>' : '');
+    if (harga) { subtotal += line; lines.push(`${opt.text.split(' · ')[0]} × ${qty}`); }
+  });
+  const mode = document.getElementById('modeKirim').value;
+  const ongkir = (subtotal >= 500000 || mode === 'Diambil' || subtotal === 0) ? 0 : 25000;
+  document.getElementById('subtotal').textContent = rupiah(subtotal);
+  document.getElementById('ongkir').textContent = rupiah(ongkir);
+  document.getElementById('total').textContent = rupiah(subtotal + ongkir);
+  document.getElementById('summary').innerHTML = lines.length
+    ? lines.map(l => `<div class="d-flex justify-content-between py-1 border-bottom"><span class="text-muted">${l}</span></div>`).join('')
+    : '<span class="text-muted">Belum ada produk dipilih.</span>';
+}
+
+document.getElementById('modeKirim').addEventListener('change', recalc);
+document.getElementById('custSelect').addEventListener('change', e => {
+  const opt = e.target.options[e.target.selectedIndex];
+  if (!e.target.value) return;
+  document.getElementById('namaPel').value = opt.dataset.nama || '';
+  document.getElementById('telpPel').value = opt.dataset.telp || '';
+  document.getElementById('alamatPel').value = opt.dataset.alamat || '';
+});
+addRow();
+</script>
+{% endblock %}

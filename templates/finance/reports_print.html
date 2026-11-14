@@ -1,0 +1,40 @@
+{% extends "public/base.html" %}
+{% block title %}Laporan Keuangan{% endblock %}
+{% block body %}
+<div class="container py-4">
+  <div class="d-print-none mb-3 d-flex gap-2">
+    <button class="btn btn-primary btn-sm" onclick="window.print()"><i class="bi bi-printer me-1"></i> Cetak</button>
+    <a class="btn btn-light btn-sm" href="{{ url_for('finance.reports') }}">Kembali</a>
+  </div>
+  <div class="rf-card p-4">
+    <div class="border-bottom pb-3 mb-3 d-flex justify-content-between">
+      <div><div class="h5 fw-bold mb-0">{{ settings.nama_toko }}</div>
+        <div class="small text-muted">Laporan Keuangan — periode {{ periode }}</div></div>
+      <div class="small text-muted">{{ settings.alamat }}</div>
+    </div>
+    <div class="row g-3 mb-3 small">
+      <div class="col-4"><span class="text-muted">Pemasukan:</span> <strong>{{ rupiah(pemasukan) }}</strong></div>
+      <div class="col-4"><span class="text-muted">Pengeluaran:</span> <strong>{{ rupiah(pengeluaran) }}</strong></div>
+      <div class="col-4"><span class="text-muted">Laba:</span> <strong>{{ rupiah(laba) }}</strong></div>
+    </div>
+    <table class="table table-rf">
+      <thead><tr><th>#</th><th>Tanggal</th><th>Tipe</th><th>Kategori</th><th>Keterangan</th><th class="text-end">Jumlah</th></tr></thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td class="small">{{ r.tanggal }}</td>
+          <td class="small">{{ r.tipe }}</td>
+          <td class="small">{{ r.kategori }}</td>
+          <td class="small text-muted">{{ r.keterangan }}</td>
+          <td class="text-end small">{{ rupiah(r.jumlah) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-muted py-4">Belum ada data.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="text-end small text-muted mt-4">Dicetak {{ settings.nama_toko }}</div>
+  </div>
+</div>
+{% endblock %}

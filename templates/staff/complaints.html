@@ -1,0 +1,57 @@
+{% extends "panel_base.html" %}
+{% block title %}Data Komplain{% endblock %}
+{% block heading %}Data Komplain{% endblock %}
+{% block subheading %}Kelola keluhan pelanggan beserta bukti{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <a class="btn btn-sm {{ 'btn-primary' if not status else 'btn-light' }}" href="{{ url_for('staff.complaints') }}">Semua</a>
+  {% for s in STATUS_KELUHAN %}
+  <a class="btn btn-sm {{ 'btn-primary' if status == s else 'btn-light' }}" href="{{ url_for('staff.complaints', status=s) }}">{{ s }}</a>
+  {% endfor %}
+</div>
+
+{% for c in rows %}
+<div class="rf-card p-3 p-md-4 mb-3">
+  <div class="d-flex justify-content-between flex-wrap gap-2 mb-2">
+    <div>
+      <div class="fw-bold">{{ c.subjek }}</div>
+      <div class="small text-muted">{{ c.kode }} · {{ c.nama_pelanggan }} · {{ c.created_at[:16] }}</div>
+    </div>
+    <span class="rf-chip {{ 'gray' if c.status == 'Baru' }}">{{ c.status }}</span>
+  </div>
+  <p class="small mb-2">{{ c.isi }}</p>
+  {% if c.foto or c.video %}
+  <div class="d-flex flex-wrap gap-2 mb-3">
+    {% if c.foto %}
+    <a href="{{ url_for('static', filename='uploads/' ~ c.foto) }}" target="_blank" title="Lihat foto">
+      <img src="{{ url_for('static', filename='uploads/' ~ c.foto) }}" class="rounded" style="width:110px;height:80px;object-fit:cover" alt="Foto bukti">
+    </a>
+    {% endif %}
+    {% if c.video %}
+    <video src="{{ url_for('static', filename='uploads/' ~ c.video) }}" controls
+           style="width:200px;height:120px;border-radius:8px;background:#000"></video>
+    {% endif %}
+  </div>
+  {% endif %}
+  <form method="post" action="{{ url_for('staff.complaint_reply', cid=c.id) }}" class="row g-2 align-items-end">
+    <div class="col-md-3">
+      <label class="form-label small fw-semibold">Status</label>
+      <select name="status" class="form-select form-select-sm">
+        {% for s in STATUS_KELUHAN %}
+        <option value="{{ s }}" {% if c.status == s %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-7">
+      <label class="form-label small fw-semibold">Tanggapan</label>
+      <input name="tanggapan" class="form-control form-control-sm" value="{{ c.tanggapan }}">
+    </div>
+    <div class="col-md-2">
+      <button class="btn btn-sm btn-primary w-100">Simpan</button>
+    </div>
+  </form>
+</div>
+{% else %}
+<div class="rf-card p-4"><div class="rf-empty">Tidak ada komplain pada filter ini.</div></div>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,290 @@
+{% extends "panel_base.html" %}
+{% block title %}CMS Beranda{% endblock %}
+{% block heading %}Manajemen Content Beranda{% endblock %}
+{% block subheading %}Kelola slider hero, testimoni, dan konten sosial media{% endblock %}
+{% block content %}
+<ul class="nav nav-tabs mb-3" role="tablist">
+  <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabHero">Slider Hero</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabTesti">Testimoni</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabSosial">Sosial Media</button></li>
+</ul>
+
+<div class="tab-content">
+  <!-- HERO -->
+  <div class="tab-pane fade show active" id="tabHero">
+    <div class="d-flex justify-content-end mb-3">
+      <button class="btn btn-primary btn-sm" onclick="openHero()"><i class="bi bi-plus-lg me-1"></i> Tambah Slide</button>
+    </div>
+    <div class="row g-3">
+      {% for s in slides %}
+      <div class="col-md-6">
+        <div class="rf-card p-3 h-100">
+          <div class="d-flex justify-content-between mb-2">
+            <span class="rf-chip {{ '' if s.aktif else 'gray' }}">{{ 'Aktif' if s.aktif else 'Nonaktif' }}</span>
+            <span class="small text-muted">urutan {{ s.urutan }}</span>
+          </div>
+          <div class="fw-semibold">{{ s.judul }}</div>
+          <div class="small text-muted mb-2">{{ s.subjudul }}</div>
+          <div class="small text-muted mb-2">Tombol: {{ s.teks_tombol }} → {{ s.link_tombol }}</div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-light" onclick='openHero({{ s|tojson }})'><i class="bi bi-pencil"></i></button>
+            <form method="post" action="{{ url_for('admin.cms_delete', jenis='hero', item_id=s.id) }}"
+                  onsubmit="return confirm('Hapus slide ini?')">
+              <button class="btn btn-sm btn-light text-danger"><i class="bi bi-trash"></i></button>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="col-12"><div class="rf-card p-4"><div class="rf-empty">Belum ada slide.</div></div></div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- TESTIMONI -->
+  <div class="tab-pane fade" id="tabTesti">
+    <div class="d-flex justify-content-end mb-3">
+      <button class="btn btn-primary btn-sm" onclick="openTesti()"><i class="bi bi-plus-lg me-1"></i> Tambah Testimoni</button>
+    </div>
+    <div class="row g-3">
+      {% for t in testimonials %}
+      <div class="col-md-6">
+        <div class="rf-card p-3 h-100">
+          <div class="d-flex justify-content-between mb-2">
+            <div class="rf-stars">{% for _ in range(t.rating) %}<i class="bi bi-star-fill"></i>{% endfor %}</div>
+            <span class="rf-chip {{ '' if t.aktif else 'gray' }}">{{ 'Aktif' if t.aktif else 'Nonaktif' }}</span>
+          </div>
+          <div class="small mb-2">"{{ t.isi }}"</div>
+          <div class="fw-semibold small mb-2">— {{ t.nama }}</div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-light" onclick='openTesti({{ t|tojson }})'><i class="bi bi-pencil"></i></button>
+            <form method="post" action="{{ url_for('admin.cms_delete', jenis='testimoni', item_id=t.id) }}"
+                  onsubmit="return confirm('Hapus testimoni ini?')">
+              <button class="btn btn-sm btn-light text-danger"><i class="bi bi-trash"></i></button>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="col-12"><div class="rf-card p-4"><div class="rf-empty">Belum ada testimoni.</div></div></div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- SOSIAL -->
+  <div class="tab-pane fade" id="tabSosial">
+    <div class="d-flex justify-content-end mb-3">
+      <button class="btn btn-primary btn-sm" onclick="openSosial()"><i class="bi bi-plus-lg me-1"></i> Tambah Konten</button>
+    </div>
+    <div class="row g-3">
+      {% for s in socials %}
+      <div class="col-6 col-md-4 col-lg-3">
+        <div class="rf-card p-3 h-100">
+          <div class="d-flex justify-content-between mb-2">
+            <span class="rf-chip">{{ s.platform|capitalize }}</span>
+            <span class="rf-chip {{ '' if s.aktif else 'gray' }}">{{ 'Aktif' if s.aktif else 'Off' }}</span>
+          </div>
+          <div class="fw-semibold small mb-1">{{ s.judul }}</div>
+          <div class="small text-muted text-truncate mb-2">{{ s.link }}</div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-light" onclick='openSosial({{ s|tojson }})'><i class="bi bi-pencil"></i></button>
+            <form method="post" action="{{ url_for('admin.cms_delete', jenis='sosial', item_id=s.id) }}"
+                  onsubmit="return confirm('Hapus konten ini?')">
+              <button class="btn btn-sm btn-light text-danger"><i class="bi bi-trash"></i></button>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="col-12"><div class="rf-card p-4"><div class="rf-empty">Belum ada konten sosial media.</div></div></div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="rf-card p-3 p-md-4 mt-4">
+  <h6 class="fw-bold mb-2">Produk di beranda</h6>
+  <p class="small text-muted mb-2">
+    Katalog beranda otomatis menarik produk aktif dari Master Produk. Kelola di menu Data Produk.
+  </p>
+  <a class="btn btn-sm btn-outline-rf" href="{{ url_for('staff.products') }}">Kelola Produk</a>
+</div>
+
+<!-- MODAL HERO -->
+<div class="modal fade" id="heroModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <form class="modal-content" method="post" action="{{ url_for('admin.cms') }}" enctype="multipart/form-data">
+      <input type="hidden" name="aksi" value="hero">
+      <div class="modal-header">
+        <h6 class="modal-title fw-bold" id="heroTitle">Tambah Slide</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body row g-3">
+        <input type="hidden" name="id" id="h_id">
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Judul slide</label>
+          <input name="judul" id="h_judul" class="form-control" required>
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Subjudul</label>
+          <textarea name="subjudul" id="h_subjudul" class="form-control" rows="2"></textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Teks tombol</label>
+          <input name="teks_tombol" id="h_teks" class="form-control" value="Belanja Sekarang">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Link tombol</label>
+          <input name="link_tombol" id="h_link" class="form-control" value="/#katalog">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Gambar latar (opsional)</label>
+          <input type="file" name="gambar" class="form-control" accept="image/*">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold">Urutan</label>
+          <input type="number" name="urutan" id="h_urutan" class="form-control" value="0">
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="aktif" id="h_aktif" checked>
+            <label class="form-check-label small" for="h_aktif">Aktif</label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL TESTIMONI -->
+<div class="modal fade" id="testiModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <form class="modal-content" method="post" action="{{ url_for('admin.cms') }}" enctype="multipart/form-data">
+      <input type="hidden" name="aksi" value="testimoni">
+      <div class="modal-header">
+        <h6 class="modal-title fw-bold" id="testiTitle">Tambah Testimoni</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body row g-3">
+        <input type="hidden" name="id" id="t_id">
+        <div class="col-md-8">
+          <label class="form-label small fw-semibold">Nama</label>
+          <input name="nama" id="t_nama" class="form-control" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small fw-semibold">Rating</label>
+          <select name="rating" id="t_rating" class="form-select">
+            {% for n in [5,4,3,2,1] %}<option value="{{ n }}">{{ n }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Isi testimoni</label>
+          <textarea name="isi" id="t_isi" class="form-control" rows="3" required></textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Foto (opsional)</label>
+          <input type="file" name="foto" class="form-control" accept="image/*">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold">Urutan</label>
+          <input type="number" name="urutan" id="t_urutan" class="form-control" value="0">
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="aktif" id="t_aktif" checked>
+            <label class="form-check-label small" for="t_aktif">Aktif</label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL SOSIAL -->
+<div class="modal fade" id="sosialModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <form class="modal-content" method="post" action="{{ url_for('admin.cms') }}" enctype="multipart/form-data">
+      <input type="hidden" name="aksi" value="sosial">
+      <div class="modal-header">
+        <h6 class="modal-title fw-bold" id="sosialTitle">Tambah Konten Sosial</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body row g-3">
+        <input type="hidden" name="id" id="s_id">
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Platform</label>
+          <select name="platform" id="s_platform" class="form-select">
+            <option value="instagram">Instagram</option><option value="tiktok">TikTok</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Judul / caption</label>
+          <input name="judul" id="s_judul" class="form-control">
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Link postingan</label>
+          <input name="link" id="s_link" class="form-control" value="https://instagram.com/rastyflorist">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Gambar</label>
+          <input type="file" name="gambar" class="form-control" accept="image/*">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold">Urutan</label>
+          <input type="number" name="urutan" id="s_urutan" class="form-control" value="0">
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="aktif" id="s_aktif" checked>
+            <label class="form-check-label small" for="s_aktif">Aktif</label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const setVal = (id, v) => document.getElementById(id).value = (v === null || v === undefined) ? '' : v;
+function show(id) { new bootstrap.Modal(document.getElementById(id)).show(); }
+
+function openHero(d) {
+  document.getElementById('heroTitle').textContent = d ? 'Ubah Slide' : 'Tambah Slide';
+  setVal('h_id', d?.id); setVal('h_judul', d?.judul); setVal('h_subjudul', d?.subjudul);
+  setVal('h_teks', d ? d.teks_tombol : 'Belanja Sekarang');
+  setVal('h_link', d ? d.link_tombol : '/#katalog');
+  setVal('h_urutan', d?.urutan ?? 0);
+  document.getElementById('h_aktif').checked = d ? !!d.aktif : true;
+  show('heroModal');
+}
+function openTesti(d) {
+  document.getElementById('testiTitle').textContent = d ? 'Ubah Testimoni' : 'Tambah Testimoni';
+  setVal('t_id', d?.id); setVal('t_nama', d?.nama); setVal('t_isi', d?.isi);
+  setVal('t_rating', d ? d.rating : 5); setVal('t_urutan', d?.urutan ?? 0);
+  document.getElementById('t_aktif').checked = d ? !!d.aktif : true;
+  show('testiModal');
+}
+function openSosial(d) {
+  document.getElementById('sosialTitle').textContent = d ? 'Ubah Konten Sosial' : 'Tambah Konten Sosial';
+  setVal('s_id', d?.id); setVal('s_platform', d ? d.platform : 'instagram');
+  setVal('s_judul', d?.judul); setVal('s_link', d ? d.link : 'https://instagram.com/rastyflorist');
+  setVal('s_urutan', d?.urutan ?? 0);
+  document.getElementById('s_aktif').checked = d ? !!d.aktif : true;
+  show('sosialModal');
+}
+</script>
+{% endblock %}

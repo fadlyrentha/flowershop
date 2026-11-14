@@ -1,0 +1,143 @@
+{% extends "panel_base.html" %}
+{% block title %}Monitoring Harian{% endblock %}
+{% block heading %}Monitoring Harian{% endblock %}
+{% block subheading %}Ringkasan order dan stok produk per hari{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap gap-2 justify-content-between align-items-end mb-3">
+  <form class="d-flex flex-wrap gap-2 align-items-end" method="get">
+    <div>
+      <label class="form-label small fw-semibold mb-1">Tanggal</label>
+      <input type="date" name="tanggal" class="form-control form-control-sm" value="{{ tanggal }}">
+    </div>
+    <div>
+      <label class="form-label small fw-semibold mb-1">Auto refresh</label>
+      <select name="refresh" class="form-select form-select-sm" onchange="this.form.submit()">
+        {% for detik, label in refresh_pilihan.items() %}
+        <option value="{{ detik }}" {% if refresh == detik %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="btn btn-sm btn-outline-rf">Tampilkan</button>
+  </form>
+  <div class="d-flex gap-2 align-items-center">
+    {% if refresh %}
+    <span class="rf-chip" id="refreshInfo">Refresh tiap {{ refresh_pilihan[refresh] }}</span>
+    {% endif %}
+    <a class="btn btn-sm btn-outline-rf" href="{{ url_for('monitoring.orders') }}"><i class="bi bi-clipboard-data me-1"></i> List Order</a>
+    <a class="btn btn-sm btn-outline-rf" href="{{ url_for('monitoring.stock') }}"><i class="bi bi-box-seam me-1"></i> List Stok</a>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-3">
+    <div class="rf-card p-3 h-100">
+      <div class="small text-muted">Order hari ini</div>
+      <div class="fs-4 fw-bold">{{ orders|length }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="rf-card p-3 h-100">
+      <div class="small text-muted">Selesai</div>
+      <div class="fs-4 fw-bold">{{ counts.get('Selesai', 0) }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="rf-card p-3 h-100">
+      <div class="small text-muted">Dibatalkan</div>
+      <div class="fs-4 fw-bold">{{ counts.get('Dibatalkan', 0) }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="rf-card p-3 h-100">
+      <div class="small text-muted">Stok menipis</div>
+      <div class="fs-4 fw-bold {{ 'text-danger' if stok_menipis }}">{{ stok_menipis }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="rf-card p-3 p-md-4 mb-3">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h6 class="fw-bold mb-0">List Order — {{ tanggal }}</h6>
+    <span class="small text-muted">{{ orders|length }} pesanan</span>
+  </div>
+  <div class="table-responsive rf-scroll-x">
+    <table class="table table-rf align-middle mb-0">
+      <thead>
+        <tr><th>Kode</th><th>Pelanggan</th><th>Detail Produk</th><th>Status Order</th><th class="text-end">Aksi</th></tr>
+      </thead>
+      <tbody>
+        {% for o in orders %}
+        <tr>
+          <td class="fw-semibold small">{{ o.kode }}</td>
+          <td class="small">{{ o.nama_pelanggan }}</td>
+          <td class="small">
+            {% for it in items.get(o.id, []) %}
+            <div>{{ it.nama_produk }} <span class="text-muted">× {{ it.qty }}</span></div>
+            {% else %}
+            <span class="text-muted">—</span>
+            {% endfor %}
+          </td>
+          <td><span class="rf-chip">{{ o.status }}</span></td>
+          <td class="text-end text-nowrap">
+            <a class="btn btn-sm btn-light" href="{{ url_for('monitoring.track', kode=o.kode) }}" title="Lacak"><i class="bi bi-geo-alt"></i></a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5"><div class="rf-empty">Belum ada pesanan pada tanggal ini.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="rf-card p-3 p-md-4">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h6 class="fw-bold mb-0">List Stok Produk</h6>
+    <span class="small text-muted">{{ products|length }} produk aktif</span>
+  </div>
+  <div class="table-responsive rf-scroll-x">
+    <table class="table table-rf align-middle mb-0">
+      <thead>
+        <tr><th>Produk</th><th>Kategori</th><th class="text-center">Stok</th><th class="text-center">Minimum</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for p in products %}
+        <tr>
+          <td class="small fw-semibold">{{ p.nama }}</td>
+          <td class="small text-muted">{{ p.kategori }}</td>
+          <td class="text-center fw-semibold {{ 'text-danger' if p.stok <= p.stok_minimum }}">{{ p.stok }}</td>
+          <td class="text-center small text-muted">{{ p.stok_minimum }}</td>
+          <td>
+            {% if p.stok <= p.stok_minimum %}
+            <span class="rf-chip">Stok Menipis</span>
+            {% else %}
+            <span class="rf-chip gray">Tersedia</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5"><div class="rf-empty">Tidak ada produk aktif.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if refresh %}
+<script>
+(function () {
+  const detik = {{ refresh }};
+  let sisa = detik;
+  const info = document.getElementById('refreshInfo');
+  const label = info ? info.textContent : '';
+  setInterval(() => {
+    sisa -= 1;
+    if (sisa <= 0) { window.location.reload(); return; }
+    if (info) info.textContent = label + ' · ' + sisa + 's';
+  }, 1000);
+})();
+</script>
+{% endif %}
+{% endblock %}

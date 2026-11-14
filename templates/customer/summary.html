@@ -1,0 +1,44 @@
+{% extends "panel_base.html" %}
+{% block title %}Ringkasan Pembelian{% endblock %}
+{% block heading %}Ringkasan Pembelian{% endblock %}
+{% block subheading %}Rekap seluruh transaksi Anda{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3">
+    <div class="rf-stat"><div class="label">Jumlah Pesanan</div><div class="value">{{ orders|length }}</div></div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="rf-stat"><div class="label">Total Nilai</div><div class="value" style="font-size:1.05rem">{{ rupiah(total) }}</div></div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="rf-stat"><div class="label">Sudah Lunas</div><div class="value" style="font-size:1.05rem">{{ rupiah(lunas) }}</div></div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="rf-stat"><div class="label">Sisa Tagihan</div><div class="value" style="font-size:1.05rem">{{ rupiah(total - lunas) }}</div></div>
+  </div>
+</div>
+
+<div class="rf-card p-0 overflow-hidden">
+  <div class="table-responsive rf-scroll-x">
+    <table class="table table-rf align-middle mb-0">
+      <thead>
+        <tr><th>Kode</th><th>Tanggal</th><th class="text-center">Item</th><th class="text-end">Total</th><th>Bayar</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for o in orders %}
+        <tr>
+          <td class="fw-semibold">{{ o.kode }}</td>
+          <td class="small text-muted">{{ o.created_at[:10] }}</td>
+          <td class="text-center">{{ o.jumlah_item }}</td>
+          <td class="text-end">{{ rupiah(o.total) }}</td>
+          <td><span class="rf-chip {{ 'gray' if o.status_bayar != 'Lunas' }}">{{ o.status_bayar }}</span></td>
+          <td><span class="rf-chip">{{ o.status }}</span></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6"><div class="rf-empty">Belum ada pembelian.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

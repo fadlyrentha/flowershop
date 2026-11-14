@@ -1,0 +1,116 @@
+{% extends "panel_base.html" %}
+{% block title %}Stok Keuangan{% endblock %}
+{% block heading %}Memperbarui Stok (Masuk & Keluar){% endblock %}
+{% block subheading %}Catatan mutasi stok dengan opsi tambah, ubah, hapus, cetak{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between mb-3">
+  <button class="btn btn-primary btn-sm" onclick="openMove()"><i class="bi bi-plus-lg me-1"></i> Tambah Mutasi</button>
+  <a class="btn btn-outline-rf btn-sm" target="_blank" href="{{ url_for('finance.stock_print') }}">
+    <i class="bi bi-printer me-1"></i> Cetak Laporan Stok
+  </a>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="rf-card p-3">
+      <h6 class="fw-bold mb-2 small text-uppercase text-muted">Stok terkini</h6>
+      <div style="max-height:480px;overflow:auto">
+        {% for p in products %}
+        <div class="d-flex justify-content-between py-2 border-bottom small">
+          <span>{{ p.nama }}</span>
+          <strong class="{{ 'text-danger' if p.stok <= p.stok_minimum }}">{{ p.stok }} {{ p.satuan }}</strong>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <div class="rf-card p-0 overflow-hidden">
+      <div class="table-responsive" style="max-height:540px;overflow:auto">
+        <table class="table table-rf align-middle mb-0">
+          <thead><tr><th>Tanggal</th><th>Produk</th><th>Jenis</th><th class="text-center">Qty</th><th>Keterangan</th><th class="text-end">Aksi</th></tr></thead>
+          <tbody>
+            {% for m in rows %}
+            <tr>
+              <td class="small text-muted text-nowrap">{{ m.created_at[:10] }}</td>
+              <td class="small fw-semibold">{{ m.produk }}</td>
+              <td><span class="badge {{ 'bg-success-subtle text-success-emphasis' if m.tipe == 'masuk' else 'bg-danger-subtle text-danger-emphasis' }}">{{ m.tipe }}</span></td>
+              <td class="text-center small">{{ m.qty }}</td>
+              <td class="small text-muted">{{ m.keterangan }}</td>
+              <td class="text-end text-nowrap">
+                <button class="btn btn-sm btn-light" onclick='openMove({{ m|tojson }})'><i class="bi bi-pencil"></i></button>
+                <form method="post" action="{{ url_for('finance.stock_delete', sid=m.id) }}" class="d-inline"
+                      onsubmit="return confirm('Hapus mutasi ini? Stok akan disesuaikan.')">
+                  <button class="btn btn-sm btn-light text-danger"><i class="bi bi-trash"></i></button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6"><div class="rf-empty">Belum ada mutasi.</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="moveModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <form class="modal-content" method="post">
+      <div class="modal-header">
+        <h6 class="modal-title fw-bold" id="moveTitle">Tambah Mutasi Stok</h6>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body row g-3">
+        <input type="hidden" name="id" id="m_id">
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Produk</label>
+          <select name="product_id" id="m_produk" class="form-select" required>
+            <option value="">— Pilih produk —</option>
+            {% for p in products %}<option value="{{ p.id }}">{{ p.nama }} (stok {{ p.stok }})</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-6">
+          <label class="form-label small fw-semibold">Jenis</label>
+          <select name="tipe" id="m_tipe" class="form-select">
+            <option value="masuk">Masuk</option><option value="keluar">Keluar</option>
+          </select>
+        </div>
+        <div class="col-6">
+          <label class="form-label small fw-semibold">Jumlah</label>
+          <input type="number" name="qty" id="m_qty" class="form-control" min="1" value="1" required>
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Keterangan</label>
+          <input name="keterangan" id="m_ket" class="form-control">
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Referensi</label>
+          <input name="referensi" id="m_ref" class="form-control" placeholder="No. nota / supplier">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openMove(data) {
+  document.getElementById('moveTitle').textContent = data ? 'Ubah Mutasi Stok' : 'Tambah Mutasi Stok';
+  const set = (id, v) => document.getElementById(id).value = (v === null || v === undefined) ? '' : v;
+  set('m_id', data?.id);
+  set('m_produk', data?.product_id);
+  set('m_tipe', data ? data.tipe : 'masuk');
+  set('m_qty', data?.qty ?? 1);
+  set('m_ket', data?.keterangan);
+  set('m_ref', data?.referensi);
+  new bootstrap.Modal(document.getElementById('moveModal')).show();
+}
+</script>
+{% endblock %}

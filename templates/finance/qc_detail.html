@@ -1,0 +1,50 @@
+{% extends "panel_base.html" %}
+{% block title %}Detail QC{% endblock %}
+{% block heading %}Checklist QC — {{ order.kode }}{% endblock %}
+{% block subheading %}{{ order.nama_pelanggan }} · {{ order.status }}{% endblock %}
+{% block content %}
+<div class="rf-card p-3 p-md-4">
+  <div class="table-responsive">
+    <table class="table table-rf align-middle">
+      <thead><tr><th>Produk</th><th class="text-center">Qty</th><th>Status QC</th><th>Keterangan</th><th>Bukti</th></tr></thead>
+      <tbody>
+        {% for i in items %}
+        {% set cek = checks.get(i.id) %}
+        <tr>
+          <td class="fw-semibold">{{ i.nama_produk }}</td>
+          <td class="text-center">{{ i.qty }}</td>
+          <td><span class="rf-chip {{ 'gray' if i.qc_status == 'Belum Dicek' }}">{{ i.qc_status }}</span></td>
+          <td class="small">{{ i.qc_catatan or (cek.catatan if cek else '-') }}</td>
+          <td>
+            {% if cek %}
+              <div class="d-flex gap-2">
+                {% if cek.foto %}
+                <a href="{{ url_for('static', filename='uploads/' ~ cek.foto) }}" target="_blank">
+                  <img src="{{ url_for('static', filename='uploads/' ~ cek.foto) }}" class="rf-thumb" alt="Foto QC">
+                </a>
+                {% endif %}
+                {% if cek.video %}
+                <a href="{{ url_for('static', filename='uploads/' ~ cek.video) }}" target="_blank" class="btn btn-sm btn-light">
+                  <i class="bi bi-play-circle me-1"></i>Video
+                </a>
+                {% endif %}
+                {% if not cek.foto and not cek.video %}<span class="small text-muted">-</span>{% endif %}
+              </div>
+            {% else %}
+              <span class="small text-muted">Belum ada</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-light" href="{{ url_for('finance.qc_list') }}">Kembali</a>
+    <a class="btn btn-outline-rf" target="_blank" href="{{ url_for('finance.qc_print', order_id=order.id) }}">
+      <i class="bi bi-printer me-1"></i> Cetak Checklist
+    </a>
+    <a class="btn btn-primary" href="{{ url_for('finance.invoices') }}">Buat Faktur</a>
+  </div>
+</div>
+{% endblock %}

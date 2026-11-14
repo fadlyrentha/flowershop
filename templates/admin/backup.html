@@ -1,0 +1,75 @@
+{% extends "panel_base.html" %}
+{% block title %}Backup Data{% endblock %}
+{% block heading %}Backup Data{% endblock %}
+{% block subheading %}Cadangkan database secara manual atau otomatis sesuai jadwal{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-lg-5">
+    <div class="rf-card p-3 p-md-4 h-100">
+      <h6 class="fw-bold mb-3">Jadwal Backup Otomatis</h6>
+      <form method="post">
+        <input type="hidden" name="aksi" value="jadwal">
+        <label class="form-label small fw-semibold">Frekuensi</label>
+        <select name="backup_jadwal" class="form-select form-select-sm mb-3">
+          <option value="off" {% if jadwal == 'off' %}selected{% endif %}>Nonaktif</option>
+          {% for key, hari in jadwal_pilihan.items() %}
+          <option value="{{ key }}" {% if jadwal == key %}selected{% endif %}>
+            {{ key|capitalize }} (setiap {{ hari }} hari)
+          </option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-primary btn-sm"><i class="bi bi-calendar-check me-1"></i> Simpan Jadwal</button>
+      </form>
+      <div class="small text-muted mt-3">
+        Backup otomatis diperiksa tiap jam selama aplikasi berjalan dan dibuat bila jadwalnya
+        sudah jatuh tempo.
+        {% if terakhir %}<br>Backup terakhir: <strong>{{ terakhir }}</strong>{% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="rf-card p-3 p-md-4 h-100 d-flex flex-column justify-content-between">
+      <div>
+        <h6 class="fw-bold mb-2">Backup Manual</h6>
+        <p class="small text-muted mb-3">
+          Menyalin seluruh database (pesanan, faktur, stok, pengguna) ke berkas <code>.db</code>
+          di folder <code>backups/</code>. Unduh berkasnya untuk menyimpan salinan di luar server.
+        </p>
+      </div>
+      <form method="post">
+        <input type="hidden" name="aksi" value="buat">
+        <button class="btn btn-outline-rf"><i class="bi bi-download me-1"></i> Buat Backup Sekarang</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="rf-card p-0 overflow-hidden">
+  <div class="p-3 p-md-4 pb-0">
+    <h6 class="fw-bold mb-0">Riwayat Backup</h6>
+  </div>
+  <div class="table-responsive rf-scroll-x mt-3">
+    <table class="table table-rf align-middle mb-0">
+      <thead><tr><th>Berkas</th><th>Dibuat</th><th class="text-end">Ukuran</th><th class="text-end">Aksi</th></tr></thead>
+      <tbody>
+        {% for b in rows %}
+        <tr>
+          <td class="small fw-semibold">{{ b.nama }}</td>
+          <td class="small text-muted text-nowrap">{{ b.dibuat }}</td>
+          <td class="text-end small">{{ (b.ukuran / 1024)|round(1) }} KB</td>
+          <td class="text-end text-nowrap">
+            <a class="btn btn-sm btn-light" href="{{ url_for('admin.backup_download', nama=b.nama) }}" title="Unduh"><i class="bi bi-download"></i></a>
+            <form method="post" action="{{ url_for('admin.backup_delete', nama=b.nama) }}" class="d-inline"
+                  onsubmit="return confirm('Hapus backup {{ b.nama }}?')">
+              <button class="btn btn-sm btn-light text-danger" title="Hapus"><i class="bi bi-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4"><div class="rf-empty">Belum ada berkas backup.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

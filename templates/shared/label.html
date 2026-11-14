@@ -1,0 +1,40 @@
+{% extends "public/base.html" %}
+{% block title %}Label {{ order.kode }}{% endblock %}
+{% block body %}
+<div class="container py-4" style="max-width:560px">
+  <div class="d-print-none mb-3 d-flex gap-2">
+    <button class="btn btn-primary btn-sm" onclick="window.print()"><i class="bi bi-printer me-1"></i> Cetak Label</button>
+    <a class="btn btn-light btn-sm" href="{{ url_for('staff.order_detail', order_id=order.id) }}">Kembali</a>
+  </div>
+  <div class="border rounded-3 p-4" style="border-width:2px !important">
+    <div class="d-flex justify-content-between align-items-start border-bottom pb-2 mb-2">
+      <div>
+        <div class="fw-bold text-rf">{{ settings.nama_toko }}</div>
+        <div class="small text-muted">{{ settings.telepon }}</div>
+      </div>
+      <div class="text-end">
+        <div class="fw-bold fs-5">{{ order.kode }}</div>
+        <div class="small">{{ order.created_at[:10] }}</div>
+      </div>
+    </div>
+    <div class="small mb-1 text-muted">Kepada:</div>
+    <div class="h5 fw-bold mb-0">{{ order.nama_pelanggan }}</div>
+    <div class="mb-2">{{ order.telepon }}</div>
+    <div class="mb-3">{{ order.alamat }}</div>
+    <div class="row small mb-2">
+      <div class="col-6"><span class="text-muted">Pengiriman:</span> <strong>{{ order.pengiriman }}</strong></div>
+      <div class="col-6"><span class="text-muted">Status:</span> <strong>{{ order.status }}</strong></div>
+    </div>
+    <table class="table table-sm table-bordered mb-2">
+      <thead><tr><th>Produk</th><th class="text-center">Qty</th></tr></thead>
+      <tbody>
+        {% for i in items %}<tr><td>{{ i.nama_produk }}</td><td class="text-center">{{ i.qty }}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+    {% if order.catatan %}
+    <div class="small border rounded p-2"><strong>Catatan:</strong> {{ order.catatan }}</div>
+    {% endif %}
+    <div class="text-center small text-muted mt-3">Mohon periksa kondisi paket saat diterima.</div>
+  </div>
+</div>
+{% endblock %}

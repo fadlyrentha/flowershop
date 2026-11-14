@@ -1,0 +1,141 @@
+{% extends "panel_base.html" %}
+{% block title %}Faktur{% endblock %}
+{% block heading %}Faktur / Tagihan Pelanggan{% endblock %}
+{% block subheading %}Tambah, ubah, hapus, dan cetak faktur{% endblock %}
+{% block content %}
+<ul class="nav nav-pills flex-wrap gap-2 mb-3">
+  <li class="nav-item">
+    <a class="nav-link btn-sm {{ 'active bg-rf text-white' if not kode else 'bg-white text-dark' }}"
+       href="{{ url_for('finance.invoices') }}">Semua <span class="badge bg-light text-dark ms-1">{{ total_semua }}</span></a>
+  </li>
+  {% for k in kode_tagihan %}
+  <li class="nav-item">
+    <a class="nav-link btn-sm {{ 'active bg-rf text-white' if kode == k else 'bg-white text-dark' }}"
+       href="{{ url_for('finance.invoices', kode=k) }}">{{ k }} <span class="badge bg-light text-dark ms-1">{{ counts.get(k, 0) }}</span></a>
+  </li>
+  {% endfor %}
+</ul>
+
+<div class="d-flex justify-content-end mb-3">
+  <button class="btn btn-primary btn-sm" onclick="openInvoice()"><i class="bi bi-plus-lg me-1"></i> Buat Faktur</button>
+</div>
+
+<div class="rf-card p-0 overflow-hidden">
+  <div class="table-responsive">
+    <table class="table table-rf align-middle mb-0">
+      <thead><tr><th>Nomor</th><th>Pelanggan</th><th>Kode Tagihan</th><th class="text-end">Total</th><th>Jatuh Tempo</th><th>Status</th><th class="text-end">Aksi</th></tr></thead>
+      <tbody>
+        {% for i in rows %}
+        <tr>
+          <td class="small fw-semibold">{{ i.nomor }}</td>
+          <td class="small">{{ i.nama_pelanggan }}</td>
+          <td class="small"><span class="rf-chip gray">{{ i.kode_tagihan }}</span></td>
+          <td class="text-end small">{{ rupiah(i.total) }}</td>
+          <td class="small text-muted">{{ i.jatuh_tempo }}</td>
+          <td><span class="rf-chip {{ 'gray' if i.status != 'Lunas' }}">{{ i.status }}</span></td>
+          <td class="text-end text-nowrap">
+            <a class="btn btn-sm btn-success" target="_blank" rel="noopener" href="{{ url_for('finance.invoice_wa', iid=i.id) }}" title="Kirim ke WhatsApp"><i class="bi bi-whatsapp"></i></a>
+            <a class="btn btn-sm btn-danger" href="{{ url_for('finance.invoice_pdf_download', iid=i.id) }}" title="Unduh PDF"><i class="bi bi-file-earmark-pdf"></i></a>
+            <a class="btn btn-sm btn-light" target="_blank" href="{{ url_for('finance.invoice_print', iid=i.id) }}"><i class="bi bi-printer"></i></a>
+            <button class="btn btn-sm btn-light" onclick='openInvoice({{ i|tojson }})'><i class="bi bi-pencil"></i></button>
+            <form method="post" action="{{ url_for('finance.invoice_delete', iid=i.id) }}" class="d-inline"
+                  onsubmit="return confirm('Hapus faktur {{ i.nomor }}?')">
+              <button class="btn btn-sm btn-light text-danger"><i class="bi bi-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7"><div class="rf-empty">Belum ada faktur.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal fade" id="invModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <form class="modal-content" method="post">
+      <div class="modal-header">
+        <h6 class="modal-title fw-bold" id="invTitle">Buat Faktur</h6>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body row g-3">
+        <input type="hidden" name="id" id="i_id">
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Nomor faktur</label>
+          <input name="nomor" id="i_nomor" class="form-control" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Pelanggan</label>
+          <input name="nama_pelanggan" id="i_nama" class="form-control">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Order terkait</label>
+          <select name="order_id" id="i_order" class="form-select">
+            <option value="">— Tanpa order —</option>
+            {% for o in orders %}<option value="{{ o.id }}" data-nama="{{ o.nama_pelanggan }}" data-total="{{ o.total }}">
+              {{ o.kode }} · {{ o.nama_pelanggan }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Total (Rp)</label>
+          <input type="number" name="total" id="i_total" class="form-control" min="0" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small fw-semibold">Kode tagihan</label>
+          <select name="kode_tagihan" id="i_kode" class="form-select">
+            {% for k in kode_tagihan %}<option value="{{ k }}">{{ k }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small fw-semibold">Status</label>
+          <select name="status" id="i_status" class="form-select">
+            {% for s in ['Belum Dibayar','Sebagian','Lunas','Batal'] %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small fw-semibold">Jatuh tempo</label>
+          <input type="date" name="jatuh_tempo" id="i_jt" class="form-control">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small fw-semibold">Akun pelanggan</label>
+          <select name="user_id" id="i_user" class="form-select">
+            <option value="">—</option>
+            {% for c in customers %}<option value="{{ c.id }}">{{ c.nama }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const today = new Date();
+function openInvoice(data) {
+  document.getElementById('invTitle').textContent = data ? 'Ubah Faktur' : 'Buat Faktur';
+  const set = (id, v) => document.getElementById(id).value = (v === null || v === undefined) ? '' : v;
+  set('i_id', data?.id);
+  set('i_nomor', data ? data.nomor : 'INV-' + Date.now().toString().slice(-8));
+  set('i_nama', data?.nama_pelanggan);
+  set('i_order', data?.order_id);
+  set('i_total', data?.total ?? '');
+  set('i_kode', data ? data.kode_tagihan : 'Reguler');
+  set('i_status', data ? data.status : 'Belum Dibayar');
+  set('i_jt', data ? data.jatuh_tempo : today.toISOString().slice(0, 10));
+  set('i_user', data?.user_id);
+  new bootstrap.Modal(document.getElementById('invModal')).show();
+}
+document.getElementById('i_order').addEventListener('change', e => {
+  const opt = e.target.options[e.target.selectedIndex];
+  if (!e.target.value) return;
+  document.getElementById('i_nama').value = opt.dataset.nama || '';
+  document.getElementById('i_total').value = opt.dataset.total || 0;
+});
+</script>
+{% endblock %}

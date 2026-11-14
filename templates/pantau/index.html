@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Monitoring — {{ settings.nama_toko }}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>{% include "public/css.html" %}</style>
+  <style>
+    body { background: #f4f1f2; }
+    .pantau-bar {
+      background: #fff; border-bottom: 1px solid rgba(44,32,36,.08);
+      padding: .85rem 1.25rem; position: sticky; top: 0; z-index: 1020;
+    }
+    .pantau-wrap { padding: 1.25rem; max-width: 1500px; margin: 0 auto; }
+    .pantau-tile { background: #fff; border: 1px solid rgba(44,32,36,.07); border-radius: 14px; padding: .9rem 1rem; }
+    .pantau-tile .label { font-size: .74rem; color: var(--rf-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+    .pantau-tile .value { font-size: 1.5rem; font-weight: 800; letter-spacing: -.5px; }
+    .pantau-table { background: #fff; border: 1px solid rgba(44,32,36,.07); border-radius: 14px; overflow: hidden; }
+    @media print {
+      .pantau-bar, .d-print-none { display: none !important; }
+      body { background: #fff; }
+      .pantau-wrap { padding: 0; }
+      .pantau-table, .pantau-tile { border: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="pantau-bar d-flex flex-wrap gap-2 align-items-center justify-content-between">
+  <div class="d-flex align-items-center gap-2">
+    {% if settings.logo %}
+    <img src="{{ url_for('static', filename='uploads/' + settings.logo) }}" alt="Logo"
+         style="width:34px;height:34px;object-fit:cover;border-radius:10px">
+    {% else %}
+    <span class="rf-brand-mark" style="width:34px;height:34px;font-size:.95rem">R</span>
+    {% endif %}
+    <div>
+      <div class="fw-bold" style="font-size:.95rem;line-height:1.1">Monitoring Operasional</div>
+      <div class="small text-muted" style="font-size:.72rem">{{ settings.nama_toko }}</div>
+    </div>
+  </div>
+  <div class="d-flex flex-wrap gap-2 align-items-center d-print-none">
+    {% if refresh %}
+    <span class="rf-chip" id="refreshInfo">Refresh tiap {{ refresh_pilihan[refresh] }}</span>
+    {% endif %}
+    <form class="d-flex gap-2 align-items-center" method="get">
+      <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+        <option value="">Semua status</option>
+        {% for s in statuses %}
+        <option value="{{ s }}" {% if status == s %}selected{% endif %}>{{ s }}</option>
+        {% endfor %}
+      </select>
+      <select name="refresh" class="form-select form-select-sm" onchange="this.form.submit()">
+        {% for detik, label in refresh_pilihan.items() %}
+        <option value="{{ detik }}" {% if refresh == detik %}selected{% endif %}>Auto: {{ label }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn btn-sm btn-outline-rf" type="button" onclick="window.print()">
+        <i class="bi bi-printer"></i>
+      </button>
+    </form>
+  </div>
+</div>
+
+<div class="pantau-wrap">
+  <div class="row g-2 mb-3">
+    <div class="col-6 col-md-3 col-xl-2">
+      <div class="pantau-tile h-100">
+        <div class="label">Total order</div>
+        <div class="value">{{ total_order }}</div>
+      </div>
+    </div>
+    {% for s in statuses %}
+    <div class="col-6 col-md-3 col-xl-2">
+      <div class="pantau-tile h-100">
+        <div class="label">{{ s }}</div>
+        <div class="value">{{ counts.get(s, 0) }}</div>
+      </div>
+    </div>
+    {% endfor %}
+    <div class="col-6 col-md-3 col-xl-2">
+      <div class="pantau-tile h-100">
+        <div class="label">Stok menipis</div>
+        <div class="value {{ 'text-danger' if stok_menipis }}">{{ stok_menipis }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pantau-table mb-3">
+    <div class="p-3 pb-0 d-flex justify-content-between align-items-center">
+      <h6 class="fw-bold mb-0">List Order</h6>
+      <span class="small text-muted">{{ orders|length }} pesanan ditampilkan</span>
+    </div>
+    <div class="table-responsive rf-scroll-x mt-2">
+      <table class="table table-rf align-middle mb-0">
+        <thead>
+          <tr><th>Kode</th><th>Pelanggan</th><th>Detail Produk</th><th>Status</th><th>Pembayaran</th><th>Tanggal</th></tr>
+        </thead>
+        <tbody>
+          {% for o in orders %}
+          <tr>
+            <td class="small fw-semibold text-nowrap">{{ o.kode }}</td>
+            <td class="small">{{ o.nama_pelanggan }}</td>
+            <td class="small">
+              {% for it in items.get(o.id, []) %}
+              <div>{{ it.nama_produk }} <span class="text-muted">× {{ it.qty }}</span></div>
+              {% else %}
+              <span class="text-muted">—</span>
+              {% endfor %}
+            </td>
+            <td><span class="rf-chip">{{ o.status }}</span></td>
+            <td class="small text-muted text-nowrap">{{ o.status_bayar }}</td>
+            <td class="small text-muted text-nowrap">{{ o.created_at[:16] }}</td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6"><div class="rf-empty">Belum ada pesanan.</div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="pantau-table">
+    <div class="p-3 pb-0 d-flex justify-content-between align-items-center">
+      <h6 class="fw-bold mb-0">List Stok Produk</h6>
+      <span class="small text-muted">{{ products|length }} produk aktif</span>
+    </div>
+    <div class="table-responsive rf-scroll-x mt-2">
+      <table class="table table-rf align-middle mb-0">
+        <thead>
+          <tr><th>Produk</th><th>Kategori</th><th class="text-center">Stok</th><th class="text-center">Minimum</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          {% for p in products %}
+          <tr>
+            <td class="small fw-semibold">{{ p.nama }}</td>
+            <td class="small text-muted">{{ p.kategori }}</td>
+            <td class="text-center fw-semibold {{ 'text-danger' if p.stok <= p.stok_minimum }}">{{ p.stok }}</td>
+            <td class="text-center small text-muted">{{ p.stok_minimum }}</td>
+            <td>
+              {% if p.stok <= p.stok_minimum %}
+              <span class="rf-chip">Stok Menipis</span>
+              {% else %}
+              <span class="rf-chip gray">Tersedia</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5"><div class="rf-empty">Tidak ada produk aktif.</div></td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="small text-muted text-center mt-3">
+    Halaman monitoring mandiri · {{ settings.nama_toko }}
+  </div>
+</div>
+
+{% if refresh %}
+<script>
+(function () {
+  const detik = {{ refresh }};
+  let sisa = detik;
+  const info = document.getElementById('refreshInfo');
+  const label = info ? info.textContent : '';
+  setInterval(() => {
+    sisa -= 1;
+    if (sisa <= 0) { window.location.reload(); return; }
+    if (info) info.textContent = label + ' · ' + sisa + 's';
+  }, 1000);
+})();
+</script>
+{% endif %}
+</body>
+</html>

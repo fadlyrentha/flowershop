@@ -1,0 +1,79 @@
+{% extends "panel_base.html" %}
+{% block title %}Komplain{% endblock %}
+{% block heading %}Form Komplain{% endblock %}
+{% block subheading %}Sampaikan keluhan beserta bukti foto atau video{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="rf-card p-4">
+      <h6 class="fw-bold mb-3">Buat komplain baru</h6>
+      <form method="post" enctype="multipart/form-data" class="row g-3">
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Terkait pesanan (opsional)</label>
+          <select name="order_id" class="form-select">
+            <option value="">— Tidak terkait pesanan —</option>
+            {% for o in orders %}<option value="{{ o.id }}">{{ o.kode }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Subjek keluhan</label>
+          <input name="subjek" class="form-control" required maxlength="120"
+                 placeholder="Contoh: Bunga layu saat diterima">
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Isi keluhan</label>
+          <textarea name="isi" class="form-control" rows="4" required
+                    placeholder="Jelaskan kronologi dan kondisi produk yang diterima."></textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Upload foto</label>
+          <input type="file" name="foto" class="form-control" accept="image/*">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Upload video</label>
+          <input type="file" name="video" class="form-control" accept="video/*">
+        </div>
+        <div class="col-12">
+          <button class="btn btn-primary w-100"><i class="bi bi-send me-1"></i> Kirim Komplain</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    <div class="rf-card p-4">
+      <h6 class="fw-bold mb-3">Riwayat komplain</h6>
+      {% for c in rows %}
+      <div class="border rounded-3 p-3 mb-3">
+        <div class="d-flex justify-content-between gap-2 mb-1">
+          <div class="fw-semibold">{{ c.subjek }}</div>
+          <span class="rf-chip {{ 'gray' if c.status == 'Baru' }}">{{ c.status }}</span>
+        </div>
+        <div class="small text-muted mb-2">{{ c.kode }} · {{ c.created_at[:16] }}</div>
+        <p class="small mb-2">{{ c.isi }}</p>
+        {% if c.foto or c.video %}
+        <div class="d-flex flex-wrap gap-2 mb-2">
+          {% if c.foto %}
+          <a href="{{ url_for('static', filename='uploads/' ~ c.foto) }}" target="_blank">
+            <img src="{{ url_for('static', filename='uploads/' ~ c.foto) }}" class="rounded" style="width:90px;height:66px;object-fit:cover" alt="Bukti foto">
+          </a>
+          {% endif %}
+          {% if c.video %}
+          <video src="{{ url_for('static', filename='uploads/' ~ c.video) }}" controls
+                 style="width:180px;height:110px;border-radius:8px;background:#000"></video>
+          {% endif %}
+        </div>
+        {% endif %}
+        {% if c.tanggapan %}
+        <div class="bg-rf-soft rounded p-2 small">
+          <strong>Tanggapan admin:</strong> {{ c.tanggapan }}
+        </div>
+        {% endif %}
+      </div>
+      {% else %}
+      <div class="rf-empty">Belum ada komplain.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

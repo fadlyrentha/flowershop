@@ -1,0 +1,152 @@
+{% extends "panel_base.html" %}
+{% block title %}Buat Pesanan{% endblock %}
+{% block heading %}Formulir Pembelian Produk{% endblock %}
+{% block subheading %}Tambahkan lebih dari satu produk dalam satu pesanan{% endblock %}
+{% block content %}
+<form method="post" id="orderForm">
+  <div class="row g-3">
+    <div class="col-lg-8">
+      <div class="rf-card p-3 p-md-4 mb-3">
+        <h6 class="fw-bold mb-3">Daftar produk</h6>
+        <div id="rows"></div>
+        <button type="button" class="btn btn-sm btn-outline-rf mt-2" onclick="addRow()">
+          <i class="bi bi-plus-lg me-1"></i> Tambah Produk
+        </button>
+        <div class="small text-muted mt-2">
+          <i class="bi bi-info-circle me-1"></i>
+          Stok berkurang otomatis saat pesanan dibuat. Gratis ongkir untuk belanja ≥ {{ rupiah(500000) }}.
+        </div>
+      </div>
+
+      <div class="rf-card p-3 p-md-4">
+        <h6 class="fw-bold mb-3">Data penerima</h6>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Nama penerima</label>
+            <input name="nama_pelanggan" class="form-control" value="{{ current_user.nama }}" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">No. Telepon / WA</label>
+            <input name="telepon" class="form-control" value="{{ current_user.telepon }}" required>
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold">Alamat pengiriman</label>
+            <textarea name="alamat" class="form-control" rows="2" required>{{ current_user.alamat }}</textarea>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Metode pembayaran</label>
+            <select name="metode_bayar" class="form-select">
+              <option>Transfer Bank</option>
+              <option>QRIS</option>
+              <option>Tunai (COD)</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Cara penerimaan</label>
+            <select name="pengiriman" class="form-select" id="modeKirim">
+              <option value="Dikirim">Dikirim (kurir)</option>
+              <option value="Diambil">Diambil di toko</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold">Catatan pesanan</label>
+            <textarea name="catatan" class="form-control" rows="2" placeholder="Contoh: mohon dikemas terpisah, warna dominan putih.">{{ form.get('catatan','') }}</textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="rf-card p-3 p-md-4" style="position:sticky;top:80px">
+        <h6 class="fw-bold mb-3">Ringkasan pesanan</h6>
+        <div id="summary" class="small"></div>
+        <hr>
+        <div class="d-flex justify-content-between small"><span class="text-muted">Subtotal</span><span id="subtotal">Rp 0</span></div>
+        <div class="d-flex justify-content-between small"><span class="text-muted">Ongkir</span><span id="ongkir">Rp 0</span></div>
+        <div class="d-flex justify-content-between fw-bold mt-2"><span>Total</span><span class="text-rf" id="total">Rp 0</span></div>
+        <button class="btn btn-primary w-100 mt-3" type="submit">
+          <i class="bi bi-check2-circle me-1"></i> Buat Pesanan
+        </button>
+        <p class="small text-muted mt-2 mb-0">Dengan membuat pesanan, Anda menyetujui pengecekan kualitas produk oleh tim QC sebelum pengiriman.</p>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PRODUCTS = {{ products | tojson }};
+
+function rupiah(n) {
+  return 'Rp ' + Number(n).toLocaleString('id-ID');
+}
+
+function addRow() {
+  const wrap = document.getElementById('rows');
+  const idx = wrap.children.length;
+  const div = document.createElement('div');
+  div.className = 'row g-2 align-items-center mb-2 order-row';
+  div.innerHTML = `
+    <div class="col-12 col-md-6">
+      <select class="form-select form-select-sm prod" name="product_id[]" required>
+        <option value="">— Pilih produk —</option>
+        ${PRODUCTS.map(p => `<option value="${p.id}" data-harga="${p.harga}" data-stok="${p.stok}">
+            ${p.nama} · ${rupiah(p.harga)}/${p.satuan} (stok ${p.stok})
+        </option>`).join('')}
+      </select>
+    </div>
+    <div class="col-4 col-md-2">
+      <input type="number" class="form-control form-control-sm qty" name="qty[]" value="1" min="1" required>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="small text-muted line-total">Rp 0</div>
+    </div>
+    <div class="col-2 col-md-1 text-end">
+      <button type="button" class="btn btn-sm btn-light text-danger" onclick="removeRow(this)">
+        <i class="bi bi-trash"></i>
+      </button>
+    </div>`;
+  wrap.appendChild(div);
+  div.querySelector('.prod').addEventListener('change', recalc);
+  div.querySelector('.qty').addEventListener('input', recalc);
+  recalc();
+}
+
+function removeRow(btn) {
+  if (document.querySelectorAll('.order-row').length <= 1) return;
+  btn.closest('.order-row').remove();
+  recalc();
+}
+
+function recalc() {
+  let subtotal = 0;
+  let lines = [];
+  document.querySelectorAll('.order-row').forEach(row => {
+    const sel = row.querySelector('.prod');
+    const qty = parseInt(row.querySelector('.qty').value) || 0;
+    const opt = sel.options[sel.selectedIndex];
+    const harga = opt ? parseInt(opt.dataset.harga || 0) : 0;
+    const stok = opt ? parseInt(opt.dataset.stok || 0) : 0;
+    const line = harga * qty;
+    row.querySelector('.line-total').innerHTML = rupiah(line) +
+      (stok && qty > stok ? ' <span class="text-danger">(stok kurang)</span>' : '');
+    if (harga) {
+      subtotal += line;
+      lines.push(`${opt.text.split(' · ')[0]} × ${qty}`);
+    }
+  });
+  const mode = document.getElementById('modeKirim').value;
+  const ongkir = (subtotal >= 500000 || mode === 'Diambil' || subtotal === 0) ? 0 : 25000;
+  document.getElementById('subtotal').textContent = rupiah(subtotal);
+  document.getElementById('ongkir').textContent = rupiah(ongkir);
+  document.getElementById('total').textContent = rupiah(subtotal + ongkir);
+  document.getElementById('summary').innerHTML = lines.length
+    ? lines.map(l => `<div class="d-flex justify-content-between py-1 border-bottom"><span class="text-muted">${l}</span></div>`).join('')
+    : '<span class="text-muted">Belum ada produk dipilih.</span>';
+}
+
+document.getElementById('modeKirim').addEventListener('change', recalc);
+addRow();
+</script>
+{% endblock %}

@@ -1,0 +1,77 @@
+{% extends "panel_base.html" %}
+{% block title %}Monitoring{% endblock %}
+{% block heading %}Monitoring Operasional{% endblock %}
+{% block subheading %}Ringkasan pesanan dan stok untuk semua peran staf{% endblock %}
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-6 col-lg-3">
+    <div class="rf-stat d-flex gap-3 align-items-center">
+      <div class="icon"><i class="bi bi-bag-check"></i></div>
+      <div><div class="label">Total Pesanan</div><div class="value">{{ stats.orders }}</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="rf-stat d-flex gap-3 align-items-center">
+      <div class="icon"><i class="bi bi-hourglass-split"></i></div>
+      <div><div class="label">Pesanan Aktif</div><div class="value">{{ stats.aktif }}</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="rf-stat d-flex gap-3 align-items-center">
+      <div class="icon"><i class="bi bi-truck"></i></div>
+      <div><div class="label">Sedang Dikirim</div><div class="value">{{ stats.kirim }}</div></div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="rf-stat d-flex gap-3 align-items-center">
+      <div class="icon"><i class="bi bi-exclamation-triangle"></i></div>
+      <div><div class="label">Stok Menipis</div><div class="value">{{ stats.stok_menipis }}</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="rf-card p-3 p-md-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-bold mb-0">Pesanan terbaru</h6>
+        <a href="{{ url_for('monitoring.orders') }}" class="small">Lihat semua</a>
+      </div>
+      <div class="table-responsive rf-scroll-x">
+        <table class="table table-rf align-middle mb-0">
+          <thead><tr><th>Kode</th><th>Pelanggan</th><th class="text-center">Item</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            {% for o in orders %}
+            <tr>
+              <td class="fw-semibold small">{{ o.kode }}</td>
+              <td class="small">{{ o.nama_pelanggan }}</td>
+              <td class="text-center small">{{ o.jumlah_item }}</td>
+              <td><span class="rf-chip">{{ o.status }}</span></td>
+              <td class="text-end">
+                <a class="btn btn-sm btn-light" href="{{ url_for('monitoring.track', kode=o.kode) }}"><i class="bi bi-geo-alt"></i></a>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5"><div class="rf-empty">Belum ada pesanan.</div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="rf-card p-3 p-md-4">
+      <h6 class="fw-bold mb-3">Pintasan</h6>
+      <div class="d-grid gap-2">
+        {% if 'monitoring_harian' in features_aktif %}
+        <a href="{{ url_for('monitoring.daily') }}" class="btn btn-outline-rf"><i class="bi bi-calendar2-check me-1"></i> Monitoring Harian</a>
+        {% endif %}
+        <a href="{{ url_for('monitoring.orders') }}" class="btn btn-outline-rf"><i class="bi bi-clipboard-data me-1"></i> List Order</a>
+        <a href="{{ url_for('monitoring.stock') }}" class="btn btn-outline-rf"><i class="bi bi-box-seam me-1"></i> List Stok</a>
+        <a href="{{ url_for('monitoring.status') }}" class="btn btn-outline-rf"><i class="bi bi-kanban me-1"></i> Status Pesanan</a>
+        <a href="{{ url_for('monitoring.track') }}" class="btn btn-outline-rf"><i class="bi bi-geo-alt me-1"></i> Lacak Pesanan</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

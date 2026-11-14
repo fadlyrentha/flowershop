@@ -1,0 +1,36 @@
+{% extends "panel_base.html" %}
+{% block title %}Pesanan Saya{% endblock %}
+{% block heading %}Pesanan Saya{% endblock %}
+{% block subheading %}Riwayat dan status seluruh pesanan Anda{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <a class="btn btn-sm {{ 'btn-primary' if not status else 'btn-light' }}" href="{{ url_for('customer.orders') }}">Semua</a>
+  {% for s in ORDER_STATUS %}
+  <a class="btn btn-sm {{ 'btn-primary' if status == s else 'btn-light' }}" href="{{ url_for('customer.orders', status=s) }}">{{ s }}</a>
+  {% endfor %}
+</div>
+
+<div class="rf-card p-0 overflow-hidden">
+  <div class="table-responsive rf-scroll-x">
+    <table class="table table-rf align-middle mb-0">
+      <thead><tr><th>Kode</th><th>Tanggal</th><th class="text-end">Total</th><th>Bayar</th><th>Status</th><th class="text-end">Aksi</th></tr></thead>
+      <tbody>
+        {% for o in orders %}
+        <tr>
+          <td class="fw-semibold">{{ o.kode }}</td>
+          <td class="small text-muted">{{ o.created_at[:16] }}</td>
+          <td class="text-end">{{ rupiah(o.total) }}</td>
+          <td><span class="rf-chip {{ 'gray' if o.status_bayar != 'Lunas' }}">{{ o.status_bayar }}</span></td>
+          <td><span class="rf-chip">{{ o.status }}</span></td>
+          <td class="text-end">
+            <a class="btn btn-sm btn-outline-rf" href="{{ url_for('customer.order_detail', order_id=o.id) }}">Detail</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6"><div class="rf-empty">Belum ada pesanan pada filter ini.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

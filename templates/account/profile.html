@@ -1,0 +1,64 @@
+{% extends "panel_base.html" %}
+{% block title %}Profil{% endblock %}
+{% block heading %}Profil Saya{% endblock %}
+{% block subheading %}Kelola informasi akun Anda{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="rf-card p-4">
+      <h6 class="fw-bold mb-3">Data profil</h6>
+      <form method="post" class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">
+            {% if current_user.role == 'pelanggan' %}Nama lengkap / Toko{% else %}Nama lengkap{% endif %}
+          </label>
+          <input name="nama" class="form-control" value="{{ user.nama }}" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Username</label>
+          <input class="form-control" value="{{ user.username }}" disabled>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">No. Telepon / WA</label>
+          <input name="telepon" class="form-control" value="{{ user.telepon }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Email</label>
+          <input type="email" name="email" class="form-control" value="{{ user.email }}">
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">
+            {% if current_user.role == 'pelanggan' %}Alamat pengiriman{% else %}Alamat{% endif %}
+          </label>
+          <textarea name="alamat" class="form-control" rows="3">{{ user.alamat }}</textarea>
+        </div>
+        <div class="col-12">
+          <button class="btn btn-primary"><i class="bi bi-check2 me-1"></i> Simpan Perubahan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="rf-card p-4 mb-3">
+      <h6 class="fw-bold mb-2">Kata sandi</h6>
+      <p class="small text-muted mb-3">
+        Ganti kata sandi akun Anda secara berkala untuk menjaga keamanan.
+      </p>
+      <a href="{{ url_for('account.password') }}" class="btn btn-outline-rf w-100">
+        <i class="bi bi-key me-1"></i> Ubah Kata Sandi
+      </a>
+    </div>
+    <div class="rf-card p-4">
+      <h6 class="fw-bold mb-2">Peran akun</h6>
+      <p class="small text-muted mb-3">
+        Anda masuk sebagai <strong>{{ ROLE_LABEL.get(current_user.role, '') }}</strong>.
+        Hubungi administrator bila peran atau hak akses Anda perlu diubah.
+      </p>
+      <a href="{{ wa_link(settings.whatsapp, 'Halo Rasty Florist, saya ingin bertanya tentang akun saya.') }}"
+         target="_blank" rel="noopener" class="btn btn-success w-100">
+        <i class="bi bi-whatsapp me-1"></i> Chat WhatsApp
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

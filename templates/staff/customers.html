@@ -1,0 +1,113 @@
+{% extends "panel_base.html" %}
+{% block title %}Data Pelanggan{% endblock %}
+{% block heading %}Data Pelanggan{% endblock %}
+{% block subheading %}Tambah, ubah, dan hapus data pelanggan{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap gap-2 justify-content-between mb-3">
+  <form class="d-flex gap-2" method="get">
+    <input name="q" class="form-control form-control-sm" placeholder="Cari nama / username / telepon" value="{{ q }}">
+    <button class="btn btn-sm btn-outline-rf">Cari</button>
+  </form>
+  <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#custModal" onclick="openCustomer()">
+    <i class="bi bi-plus-lg me-1"></i> Tambah Pelanggan
+  </button>
+</div>
+
+<div class="rf-card p-0 overflow-hidden">
+  <div class="table-responsive">
+    <table class="table table-rf align-middle mb-0">
+      <thead><tr><th>Nama</th><th>Username</th><th>Kontak</th><th>Alamat</th><th class="text-center">Status</th><th class="text-end">Aksi</th></tr></thead>
+      <tbody>
+        {% for u in rows %}
+        <tr>
+          <td class="fw-semibold">{{ u.nama }}</td>
+          <td class="small text-muted">{{ u.username }}</td>
+          <td class="small">{{ u.telepon }}<br><span class="text-muted">{{ u.email }}</span></td>
+          <td class="small text-muted">{{ u.alamat }}</td>
+          <td class="text-center">
+            <span class="badge {{ 'bg-success-subtle text-success-emphasis' if u.aktif else 'bg-secondary-subtle text-secondary-emphasis' }}">
+              {{ 'Aktif' if u.aktif else 'Nonaktif' }}
+            </span>
+          </td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-light" onclick='openCustomer({{ u|tojson }})'><i class="bi bi-pencil"></i></button>
+            <form method="post" action="{{ url_for('staff.customer_delete', uid=u.id) }}" class="d-inline"
+                  onsubmit="return confirm('Hapus pelanggan {{ u.nama }}?')">
+              <button class="btn btn-sm btn-light text-danger"><i class="bi bi-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6"><div class="rf-empty">Tidak ada pelanggan.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal fade" id="custModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <form class="modal-content" method="post" action="{{ url_for('staff.customer_save') }}">
+      <div class="modal-header">
+        <h6 class="modal-title fw-bold" id="custTitle">Tambah Pelanggan</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body row g-3">
+        <input type="hidden" name="id" id="c_id">
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Nama lengkap / Toko</label>
+          <input name="nama" id="c_nama" class="form-control" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Username</label>
+          <input name="username" id="c_username" class="form-control" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Telepon</label>
+          <input name="telepon" id="c_telepon" class="form-control">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Email</label>
+          <input name="email" id="c_email" class="form-control">
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Alamat</label>
+          <textarea name="alamat" id="c_alamat" class="form-control" rows="2"></textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Password <span class="text-muted">(kosongkan bila tidak diubah)</span></label>
+          <input name="password" class="form-control" autocomplete="new-password">
+        </div>
+        <div class="col-md-6 d-flex align-items-end">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="aktif" id="c_aktif" checked>
+            <label class="form-check-label small" for="c_aktif">Akun aktif</label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openCustomer(data) {
+  const m = document.getElementById('custModal');
+  const set = (id, v) => document.getElementById(id).value = v ?? '';
+  document.getElementById('custTitle').textContent = data ? 'Ubah Pelanggan' : 'Tambah Pelanggan';
+  set('c_id', data ? data.id : '');
+  set('c_nama', data ? data.nama : '');
+  set('c_username', data ? data.username : '');
+  set('c_telepon', data ? data.telepon : '');
+  set('c_email', data ? data.email : '');
+  set('c_alamat', data ? data.alamat : '');
+  document.getElementById('c_aktif').checked = data ? !!data.aktif : true;
+  new bootstrap.Modal(m).show();
+}
+</script>
+{% endblock %}

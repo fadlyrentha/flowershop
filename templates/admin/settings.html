@@ -1,0 +1,119 @@
+{% extends "panel_base.html" %}
+{% block title %}Pengaturan Situs{% endblock %}
+{% block heading %}Mengubah Isi Website{% endblock %}
+{% block subheading %}Logo, nama toko, tagline, kontak, dan warna website{% endblock %}
+{% block content %}
+<form method="post" enctype="multipart/form-data">
+  <div class="row g-3">
+    <div class="col-lg-8">
+      <div class="rf-card p-4 mb-3">
+        <h6 class="fw-bold mb-3">Identitas toko</h6>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Nama toko</label>
+            <input name="nama_toko" class="form-control" value="{{ settings.nama_toko }}" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Tagline</label>
+            <input name="tagline" class="form-control" value="{{ settings.tagline }}">
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold">Deskripsi toko</label>
+            <textarea name="deskripsi" class="form-control" rows="3">{{ settings.deskripsi }}</textarea>
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold">Alamat</label>
+            <input name="alamat" class="form-control" value="{{ settings.alamat }}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">No. telepon</label>
+            <input name="telepon" class="form-control" value="{{ settings.telepon }}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Email</label>
+            <input name="email" class="form-control" value="{{ settings.email }}">
+          </div>
+        </div>
+      </div>
+
+      <div class="rf-card p-4 mb-3">
+        <h6 class="fw-bold mb-3">Operasional & pengiriman</h6>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Jam operasional (Senin–Sabtu)</label>
+            <input name="jam_operasional" class="form-control" value="{{ settings.jam_operasional }}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Jam operasional (Minggu)</label>
+            <input name="jam_minggu" class="form-control" value="{{ settings.jam_minggu }}">
+          </div>
+          <div class="col-12">
+            <label class="form-label small fw-semibold">Info same day delivery</label>
+            <textarea name="sameday_info" class="form-control" rows="2">{{ settings.sameday_info }}</textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="rf-card p-4">
+        <h6 class="fw-bold mb-3">Sosial media & footer</h6>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Instagram</label>
+            <input name="instagram" class="form-control" value="{{ settings.instagram }}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">TikTok</label>
+            <input name="tiktok" class="form-control" value="{{ settings.tiktok }}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">No. WhatsApp (format 62...)</label>
+            <input name="whatsapp" class="form-control" value="{{ settings.whatsapp }}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small fw-semibold">Teks footer</label>
+            <input name="footer_text" class="form-control" value="{{ settings.footer_text }}">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="rf-card p-4 mb-3">
+        <h6 class="fw-bold mb-3">Logo & warna</h6>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Logo saat ini</label>
+          <div class="d-flex align-items-center gap-2 mb-2">
+            {% if settings.logo %}
+              <img src="{{ url_for('static', filename='uploads/' ~ settings.logo) }}"
+                   style="width:56px;height:56px;object-fit:cover;border-radius:12px" alt="Logo">
+            {% else %}
+              <span class="rf-brand-mark" style="width:56px;height:56px;font-size:1.4rem">R</span>
+            {% endif %}
+            <span class="small text-muted">{{ settings.logo or 'Belum diunggah' }}</span>
+          </div>
+          <input type="file" name="logo" class="form-control" accept="image/*">
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Warna primer</label>
+          <input type="color" name="warna_primer" class="form-control form-control-color w-100"
+                 value="{{ settings.warna_primer }}">
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Warna sekunder</label>
+          <input type="color" name="warna_sekunder" class="form-control form-control-color w-100"
+                 value="{{ settings.warna_sekunder }}">
+        </div>
+        <button class="btn btn-primary w-100"><i class="bi bi-check2 me-1"></i> Simpan Pengaturan</button>
+      </div>
+      <div class="rf-card p-3 small">
+        <div class="fw-semibold mb-2"><i class="bi bi-eye me-1 text-rf"></i>Pratinjau</div>
+        <div class="d-flex gap-2">
+          <div class="flex-fill rounded p-2 text-white text-center small" style="background:{{ settings.warna_primer }}">Primer</div>
+          <div class="flex-fill rounded p-2 text-center small" style="background:{{ settings.warna_sekunder }}">Sekunder</div>
+        </div>
+        <a class="btn btn-outline-rf btn-sm w-100 mt-2" href="{{ url_for('public.index') }}" target="_blank">Lihat Website</a>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}

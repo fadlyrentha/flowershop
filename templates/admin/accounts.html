@@ -1,0 +1,106 @@
+{% extends "panel_base.html" %}
+{% block title %}Akun Staff{% endblock %}
+{% block heading %}Akun Staff{% endblock %}
+{% block subheading %}Kelola akun seluruh peran kecuali pelanggan{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-end mb-3">
+  <button class="btn btn-primary btn-sm" onclick="openAcc()"><i class="bi bi-plus-lg me-1"></i> Tambah Akun</button>
+</div>
+
+<div class="rf-card p-0 overflow-hidden">
+  <div class="table-responsive">
+    <table class="table table-rf align-middle mb-0">
+      <thead><tr><th>Nama</th><th>Username</th><th>Peran</th><th>Kontak</th><th class="text-center">Status</th><th class="text-end">Aksi</th></tr></thead>
+      <tbody>
+        {% for u in rows %}
+        <tr>
+          <td class="fw-semibold">{{ u.nama }}</td>
+          <td class="small text-muted">{{ u.username }}</td>
+          <td><span class="rf-chip">{{ ROLE_LABEL.get(u.role, u.role) }}</span></td>
+          <td class="small">{{ u.telepon }}<br><span class="text-muted">{{ u.email }}</span></td>
+          <td class="text-center">
+            <span class="badge {{ 'bg-success-subtle text-success-emphasis' if u.aktif else 'bg-secondary-subtle text-secondary-emphasis' }}">
+              {{ 'Aktif' if u.aktif else 'Nonaktif' }}
+            </span>
+          </td>
+          <td class="text-end text-nowrap">
+            <button class="btn btn-sm btn-light" onclick='openAcc({{ u|tojson }})'><i class="bi bi-pencil"></i></button>
+            <form method="post" action="{{ url_for('admin.account_delete', uid=u.id) }}" class="d-inline"
+                  onsubmit="return confirm('Hapus akun {{ u.nama }}?')">
+              <button class="btn btn-sm btn-light text-danger"><i class="bi bi-trash"></i></button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6"><div class="rf-empty">Belum ada akun staff.</div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal fade" id="accModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <form class="modal-content" method="post">
+      <div class="modal-header">
+        <h6 class="modal-title fw-bold" id="accTitle">Tambah Akun Staff</h6>
+        <button class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body row g-3">
+        <input type="hidden" name="id" id="a_id">
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Nama</label>
+          <input name="nama" id="a_nama" class="form-control" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Username</label>
+          <input name="username" id="a_username" class="form-control" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Peran</label>
+          <select name="role" id="a_role" class="form-select">
+            {% for r, label in ROLE_LABEL.items() if r != 'pelanggan' %}
+            <option value="{{ r }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Telepon</label>
+          <input name="telepon" id="a_telepon" class="form-control">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Email</label>
+          <input name="email" id="a_email" class="form-control">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Password <span class="text-muted">(kosongkan bila tetap)</span></label>
+          <input name="password" class="form-control" autocomplete="new-password">
+        </div>
+        <div class="col-12">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="aktif" id="a_aktif" checked>
+            <label class="form-check-label small" for="a_aktif">Akun aktif</label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openAcc(d) {
+  document.getElementById('accTitle').textContent = d ? 'Ubah Akun Staff' : 'Tambah Akun Staff';
+  const set = (id, v) => document.getElementById(id).value = (v === null || v === undefined) ? '' : v;
+  set('a_id', d?.id); set('a_nama', d?.nama); set('a_username', d?.username);
+  set('a_role', d ? d.role : 'staff_admin'); set('a_telepon', d?.telepon); set('a_email', d?.email);
+  document.getElementById('a_aktif').checked = d ? !!d.aktif : true;
+  new bootstrap.Modal(document.getElementById('accModal')).show();
+}
+</script>
+{% endblock %}

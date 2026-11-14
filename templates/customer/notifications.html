@@ -1,0 +1,23 @@
+{% extends "panel_base.html" %}
+{% block title %}Notifikasi{% endblock %}
+{% block heading %}Notifikasi{% endblock %}
+{% block subheading %}Pemberitahuan terbaru untuk Anda{% endblock %}
+{% block content %}
+<div class="rf-card p-0 overflow-hidden">
+  {% for n in rows %}
+  <div class="d-flex gap-3 p-3 {% if not loop.last %}border-bottom{% endif %}">
+    <div class="rf-avatar"><i class="bi bi-bell"></i></div>
+    <div class="flex-grow-1">
+      <div class="fw-semibold small">{{ n.judul }}</div>
+      <div class="small text-muted">{{ n.pesan }}</div>
+      <div class="small text-muted mt-1" style="font-size:.72rem">{{ n.created_at }}</div>
+    </div>
+    {% if n.link %}
+    <a href="{{ n.link }}" class="btn btn-sm btn-light align-self-center">Buka</a>
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="rf-empty">Belum ada notifikasi.</div>
+  {% endfor %}
+</div>
+{% endblock %}

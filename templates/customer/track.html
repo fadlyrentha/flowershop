@@ -1,0 +1,91 @@
+{% extends "panel_base.html" %}
+{% block title %}Lacak Pesanan{% endblock %}
+{% block heading %}Lacak Order & Status{% endblock %}
+{% block subheading %}Pantau posisi pesanan Anda secara real-time{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="rf-card p-4">
+      <h6 class="fw-bold mb-3">Cari pesanan</h6>
+      <form method="get" class="d-flex gap-2 mb-3">
+        <input name="kode" class="form-control" placeholder="Kode invoice" value="{{ kode }}" required>
+        <button class="btn btn-primary"><i class="bi bi-search"></i></button>
+      </form>
+      <div class="small fw-semibold mb-2 text-muted">Pesanan terakhir</div>
+      <div class="list-group list-group-flush">
+        {% for o in orders %}
+        <a href="{{ url_for('customer.track', kode=o.kode) }}"
+           class="list-group-item list-group-item-action px-0 d-flex justify-content-between align-items-center small">
+          <span class="fw-semibold">{{ o.kode }}</span>
+          <span class="rf-chip">{{ o.status }}</span>
+        </a>
+        {% else %}
+        <div class="small text-muted">Belum ada pesanan.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-8">
+    {% if order %}
+    <div class="rf-card p-4">
+      <div class="d-flex justify-content-between flex-wrap gap-2 mb-3">
+        <div>
+          <div class="h5 fw-bold mb-0">{{ order.kode }}</div>
+          <div class="small text-muted">{{ order.created_at }}</div>
+        </div>
+        <span class="rf-chip align-self-center fs-6">{{ order.status }}</span>
+      </div>
+
+      <ul class="rf-steps mb-4">
+        {% set cur = ORDER_STATUS.index(order.status) if order.status in ORDER_STATUS else 0 %}
+        {% for s in ['Menunggu Konfirmasi','Diproses','Quality Kontrol','Siap Kirim','Dikirim','Selesai'] %}
+        <li class="{{ 'done' if cur > loop.index0 else ('current' if order.status == s else '') }}">
+          <div class="fw-semibold">{{ s }}</div>
+          <div class="text-muted">
+            {% if loop.index0 == 0 %}Pesanan diterima sistem.
+            {% elif loop.index0 == 1 %}Admin menyiapkan pesanan.
+            {% elif loop.index0 == 2 %}Tim QC memeriksa kesegaran produk.
+            {% elif loop.index0 == 3 %}Produk lolos QC, siap dikirim.
+            {% elif loop.index0 == 4 %}Dalam perjalanan ke alamat Anda.
+            {% else %}Pesanan selesai.{% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+
+      <div class="table-responsive">
+        <table class="table table-sm table-rf">
+          <thead><tr><th>Produk</th><th class="text-center">Qty</th><th class="text-end">Subtotal</th><th>QC</th></tr></thead>
+          <tbody>
+            {% for i in items %}
+            <tr>
+              <td>{{ i.nama_produk }}</td>
+              <td class="text-center">{{ i.qty }}</td>
+              <td class="text-end">{{ rupiah(i.subtotal) }}</td>
+              <td><span class="rf-chip {{ 'gray' if i.qc_status == 'Belum Dicek' }}">{{ i.qc_status }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="d-flex gap-2">
+        <a class="btn btn-outline-rf btn-sm" href="{{ url_for('customer.order_detail', order_id=order.id) }}">Detail Pesanan</a>
+        <a class="btn btn-success btn-sm" target="_blank" rel="noopener"
+           href="{{ wa_link(settings.whatsapp, 'Halo, saya ingin menanyakan status pesanan ' ~ order.kode ~ '.') }}">
+          <i class="bi bi-whatsapp me-1"></i> Tanya Admin
+        </a>
+      </div>
+    </div>
+    {% elif kode %}
+    <div class="rf-card p-4"><div class="rf-empty">Pesanan tidak ditemukan pada akun Anda.</div></div>
+    {% else %}
+    <div class="rf-card p-4">
+      <div class="rf-empty">
+        <i class="bi bi-geo-alt fs-2 d-block mb-2"></i>
+        Masukkan kode pesanan di samping untuk melihat status.
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
