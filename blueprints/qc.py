@@ -137,6 +137,11 @@ def replace_product():
         if product is None or qty <= 0:
             flash("Produk pengganti dan jumlah wajib diisi.", "danger")
             return redirect(url_for("qc.replace_product", order_id=item["order_id"]))
+        minimal = product["min_order"] or 0
+        if minimal and qty < minimal:
+            flash("Jumlah %s minimal %d %s." % (product["nama"], minimal, product["satuan"] or ""),
+                  "danger")
+            return redirect(url_for("qc.replace_product", order_id=item["order_id"]))
         if qty > product["stok"]:
             flash("Stok %s tidak mencukupi (tersedia %d)." % (product["nama"], product["stok"]),
                   "danger")
@@ -174,8 +179,9 @@ def replace_product():
         database.execute(
             "UPDATE orders SET subtotal = ?, ongkir = ?, total = ?, updated_at = ? WHERE id = ?",
             (new_subtotal, ongkir, new_total, database.now(), order["id"]))
-        database.execute("UPDATE invoices SET total = ? WHERE order_id = ?",
-                         (new_total, order["id"]))
+        database.execute(
+            "UPDATE invoices SET subtotal = ?, ongkir = ?, total = ? WHERE order_id = ?",
+            (new_subtotal, ongkir, new_total, order["id"]))
         if order["user_id"]:
             helpers.notify(
                 "Produk pesanan %s diganti" % order["kode"],
@@ -219,6 +225,11 @@ def _tambah_produk_pesanan():
     if product is None or qty <= 0:
         flash("Produk dan jumlah wajib diisi.", "danger")
         return redirect(url_for("qc.replace_product", order_id=order_id))
+    minimal = product["min_order"] or 0
+    if minimal and qty < minimal:
+        flash("Jumlah %s minimal %d %s." % (product["nama"], minimal, product["satuan"] or ""),
+              "danger")
+        return redirect(url_for("qc.replace_product", order_id=order_id))
     if qty > product["stok"]:
         flash("Stok %s tidak mencukupi (tersedia %d)." % (product["nama"], product["stok"]),
               "danger")
@@ -245,7 +256,9 @@ def _tambah_produk_pesanan():
     database.execute(
         "UPDATE orders SET subtotal = ?, ongkir = ?, total = ?, updated_at = ? WHERE id = ?",
         (new_subtotal, ongkir, new_total, database.now(), order_id))
-    database.execute("UPDATE invoices SET total = ? WHERE order_id = ?", (new_total, order_id))
+    database.execute(
+        "UPDATE invoices SET subtotal = ?, ongkir = ?, total = ? WHERE order_id = ?",
+        (new_subtotal, ongkir, new_total, order_id))
     if order["user_id"]:
         helpers.notify(
             "Produk ditambahkan ke pesanan %s" % order["kode"],

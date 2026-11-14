@@ -52,6 +52,10 @@ def new_order():
         if not items:
             flash("Pilih minimal satu produk beserta jumlahnya.", "danger")
             return render_template("customer/new_order.html", products=products, form=request.form)
+        pesan_min = helpers.min_order_error(items)
+        if pesan_min:
+            flash(pesan_min, "danger")
+            return render_template("customer/new_order.html", products=products, form=request.form)
         for item in items:
             if item["qty"] > item["product"]["stok"]:
                 flash("Stok %s tidak mencukupi (tersedia %d)." % (

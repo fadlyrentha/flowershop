@@ -207,6 +207,10 @@ def _baca_produk_qty():
         qty = 0
     if qty <= 0:
         return None, 0, "Jumlah harus lebih dari nol."
+    minimal = product["min_order"] or 0
+    if minimal and qty < minimal:
+        return None, 0, "Jumlah %s minimal %d %s." % (
+            product["nama"], minimal, product["satuan"] or "")
     return product, qty, ""
 
 
@@ -218,7 +222,9 @@ def _hitung_ulang_pesanan(order):
     database.execute(
         "UPDATE orders SET subtotal = ?, ongkir = ?, total = ?, updated_at = ? WHERE id = ?",
         (subtotal, ongkir, total, database.now(), order["id"]))
-    database.execute("UPDATE invoices SET total = ? WHERE order_id = ?", (total, order["id"]))
+    database.execute(
+        "UPDATE invoices SET subtotal = ?, ongkir = ?, total = ? WHERE order_id = ?",
+        (subtotal, ongkir, total, order["id"]))
     return total
 
 
@@ -356,6 +362,11 @@ def new_order():
             flash("Pilih minimal satu produk.", "danger")
             return render_template("staff/new_order.html", products=products,
                                    customers_list=customers_list, form=request.form)
+        pesan_min = helpers.min_order_error(items)
+        if pesan_min:
+            flash(pesan_min, "danger")
+            return render_template("staff/new_order.html", products=products,
+                                   customers_list=customers_list, form=request.form)
         for item in items:
             if item["qty"] > item["product"]["stok"]:
                 flash("Stok %s tidak mencukupi." % item["product"]["nama"], "danger")
@@ -457,14 +468,25 @@ def order_qc_list(order_id):
 @helpers.feature_required("produk")
 def products():
     if request.method == "POST":
+        if not helpers.boleh_kelola_produk():
+            abort(403)
         pid = request.form.get("id")
+        try:
+            harga = int(request.form.get("harga") or 0)
+            stok = int(request.form.get("stok") or 0)
+            stok_minimum = int(request.form.get("stok_minimum") or 5)
+            min_order = max(0, int(request.form.get("min_order") or 0))
+        except (TypeError, ValueError):
+            flash("Harga dan stok harus berupa angka.", "danger")
+            return redirect(url_for("staff.products"))
         data = (
             request.form.get("nama", "").strip(),
             request.form.get("deskripsi", "").strip(),
+            request.form.get("deskripsi_panjang", "").strip(),
+            request.form.get("rekomendasi", "").strip(),
+            request.form.get("ketentuan", "").strip(),
             request.form.get("kategori", "Bunga Potong").strip(),
-            int(request.form.get("harga") or 0),
-            int(request.form.get("stok") or 0),
-            int(request.form.get("stok_minimum") or 5),
+            harga, stok, stok_minimum, min_order,
             request.form.get("satuan", "ikat").strip(),
             1 if request.form.get("aktif") else 0,
         )
@@ -475,19 +497,22 @@ def products():
             lama = database.query("SELECT gambar FROM products WHERE id = ?", (pid,), one=True)
             if gambar:
                 database.execute(
-                    "UPDATE products SET nama=?, deskripsi=?, kategori=?, harga=?, stok=?, stok_minimum=?,"
-                    " satuan=?, aktif=?, gambar=? WHERE id=?", data + (gambar, pid))
+                    "UPDATE products SET nama=?, deskripsi=?, deskripsi_panjang=?, rekomendasi=?,"
+                    " ketentuan=?, kategori=?, harga=?, stok=?, stok_minimum=?, min_order=?, satuan=?,"
+                    " aktif=?, gambar=? WHERE id=?", data + (gambar, pid))
                 if lama and lama["gambar"]:
                     helpers.delete_upload(lama["gambar"])
             else:
                 database.execute(
-                    "UPDATE products SET nama=?, deskripsi=?, kategori=?, harga=?, stok=?, stok_minimum=?,"
-                    " satuan=?, aktif=? WHERE id=?", data + (pid,))
+                    "UPDATE products SET nama=?, deskripsi=?, deskripsi_panjang=?, rekomendasi=?,"
+                    " ketentuan=?, kategori=?, harga=?, stok=?, stok_minimum=?, min_order=?, satuan=?,"
+                    " aktif=? WHERE id=?", data + (pid,))
             flash("Produk diperbarui.", "success")
         else:
             database.execute(
-                "INSERT INTO products (nama, deskripsi, kategori, harga, stok, stok_minimum, satuan, aktif,"
-                " gambar, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO products (nama, deskripsi, deskripsi_panjang, rekomendasi, ketentuan,"
+                " kategori, harga, stok, stok_minimum, min_order, satuan, aktif, gambar, created_at)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 data + (gambar, database.now()))
             flash("Produk baru ditambahkan.", "success")
         return redirect(url_for("staff.products"))
@@ -498,12 +523,15 @@ def products():
         sql += " AND (nama LIKE ? OR kategori LIKE ?)"
         args += ["%" + q + "%"] * 2
     sql += " ORDER BY nama"
-    return render_template("staff/products.html", rows=database.query(sql, args), q=q)
+    return render_template("staff/products.html", rows=database.query(sql, args), q=q,
+                           boleh_kelola=helpers.boleh_kelola_produk())
 
 
 @bp.route("/produk/<int:pid>/hapus", methods=["POST"])
 @helpers.feature_required("produk")
 def product_delete(pid):
+    if not helpers.boleh_kelola_produk():
+        abort(403)
     used = database.query("SELECT COUNT(*) AS c FROM order_items WHERE product_id = ?", (pid,), one=True)["c"]
     if used:
         database.execute("UPDATE products SET aktif = 0 WHERE id = ?", (pid,))
@@ -521,6 +549,8 @@ def product_delete(pid):
 @helpers.feature_required("produk")
 def product_photo_delete(pid):
     """Hapus foto produk tanpa menghapus produknya."""
+    if not helpers.boleh_kelola_produk():
+        abort(403)
     produk = database.query("SELECT gambar FROM products WHERE id = ?", (pid,), one=True)
     if produk is None:
         abort(404)

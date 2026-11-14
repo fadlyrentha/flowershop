@@ -28,14 +28,15 @@
     <div class="rf-card p-0 overflow-hidden">
       <div class="table-responsive" style="max-height:540px;overflow:auto">
         <table class="table table-rf align-middle mb-0">
-          <thead><tr><th>Tanggal</th><th>Produk</th><th>Jenis</th><th class="text-center">Qty</th><th>Keterangan</th><th class="text-end">Aksi</th></tr></thead>
+          <thead><tr><th>Tanggal</th><th>Produk</th><th class="text-center">Stok Masuk</th>
+            <th class="text-center">Stok Keluar</th><th>Keterangan</th><th class="text-end">Aksi</th></tr></thead>
           <tbody>
             {% for m in rows %}
             <tr>
               <td class="small text-muted text-nowrap">{{ m.created_at[:10] }}</td>
               <td class="small fw-semibold">{{ m.produk }}</td>
-              <td><span class="badge {{ 'bg-success-subtle text-success-emphasis' if m.tipe == 'masuk' else 'bg-danger-subtle text-danger-emphasis' }}">{{ m.tipe }}</span></td>
-              <td class="text-center small">{{ m.qty }}</td>
+              <td class="text-center fw-semibold text-success">{{ m.qty if m.tipe == 'masuk' else '—' }}</td>
+              <td class="text-center fw-semibold text-danger">{{ m.qty if m.tipe == 'keluar' else '—' }}</td>
               <td class="small text-muted">{{ m.keterangan }}</td>
               <td class="text-end text-nowrap">
                 <button class="btn btn-sm btn-light" onclick='openMove({{ m|tojson }})'><i class="bi bi-pencil"></i></button>

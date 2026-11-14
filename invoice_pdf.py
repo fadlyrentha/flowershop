@@ -129,9 +129,11 @@ def build(invoice, order, items, settings, rekening="", tampil_rekening=False, l
         y = MARGIN
 
     baris_total = []
-    if order:
-        baris_total.append(("Subtotal", rupiah(order["subtotal"])))
-        baris_total.append(("Ongkir", rupiah(order["ongkir"])))
+    subtotal = invoice.get("subtotal")
+    if not subtotal:
+        subtotal = order["subtotal"] if order else max(0, invoice["total"] - (invoice.get("ongkir") or 0))
+    baris_total.append(("Subtotal", rupiah(subtotal)))
+    baris_total.append(("Ongkir", rupiah(invoice.get("ongkir") or 0)))
     baris_total.append(("Total Tagihan", rupiah(invoice["total"])))
 
     tx = x + lebar * 0.55

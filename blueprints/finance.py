@@ -80,29 +80,39 @@ def qc_print(order_id):
 def invoices():
     if request.method == "POST":
         iid = request.form.get("id")
+        try:
+            subtotal = int(request.form.get("subtotal") or 0)
+            ongkir = int(request.form.get("ongkir") or 0)
+        except (TypeError, ValueError):
+            flash("Subtotal dan ongkir harus berupa angka.", "danger")
+            return redirect(url_for("finance.invoices"))
         data = (
             request.form.get("nomor", "").strip(),
             request.form.get("order_id") or None,
             request.form.get("user_id") or None,
             request.form.get("nama_pelanggan", "").strip(),
-            int(request.form.get("total") or 0),
+            subtotal,
+            ongkir,
+            subtotal + ongkir,
             request.form.get("kode_tagihan", "Reguler"),
             request.form.get("status", "Belum Dibayar"),
             request.form.get("jatuh_tempo", ""),
         )
         if not data[0]:
             flash("Nomor faktur wajib diisi.", "danger")
-        elif data[5] not in database.KODE_TAGIHAN:
+        elif data[7] not in database.KODE_TAGIHAN:
             flash("Kode tagihan tidak valid.", "danger")
         elif iid:
             database.execute(
-                "UPDATE invoices SET nomor=?, order_id=?, user_id=?, nama_pelanggan=?, total=?, kode_tagihan=?,"
-                " status=?, jatuh_tempo=? WHERE id=?", data + (iid,))
+                "UPDATE invoices SET nomor=?, order_id=?, user_id=?, nama_pelanggan=?, subtotal=?,"
+                " ongkir=?, total=?, kode_tagihan=?, status=?, jatuh_tempo=? WHERE id=?",
+                data + (iid,))
             flash("Faktur diperbarui.", "success")
         else:
             database.execute(
-                "INSERT INTO invoices (nomor, nomor_invoice, order_id, user_id, nama_pelanggan, total,"
-                " kode_tagihan, status, jatuh_tempo, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO invoices (nomor, nomor_invoice, order_id, user_id, nama_pelanggan, subtotal,"
+                " ongkir, total, kode_tagihan, status, jatuh_tempo, created_at)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 data[:1] + (database.next_number("nomor_invoice"),) + data[1:] + (database.now(),))
             flash("Faktur baru dibuat.", "success")
         return redirect(url_for("finance.invoices"))
@@ -119,7 +129,8 @@ def invoices():
     return render_template(
         "finance/invoices.html",
         rows=database.query(sql, args),
-        orders=database.query("SELECT id, kode, nama_pelanggan, total FROM orders ORDER BY id DESC"),
+        orders=database.query(
+            "SELECT id, kode, nama_pelanggan, subtotal, ongkir, total FROM orders ORDER BY id DESC"),
         customers=database.query("SELECT id, nama FROM users WHERE role = 'pelanggan' ORDER BY nama"),
         kode_tagihan=database.KODE_TAGIHAN, kode=kode, counts=counts,
         total_semua=database.query("SELECT COUNT(*) AS c FROM invoices", one=True)["c"])
@@ -530,6 +541,11 @@ def new_order():
             flash("Pilih minimal satu produk.", "danger")
             return render_template("staff/new_order.html", products=products,
                                    customers_list=customers_list, form=request.form)
+        pesan_min = helpers.min_order_error(items)
+        if pesan_min:
+            flash(pesan_min, "danger")
+            return render_template("staff/new_order.html", products=products,
+                                   customers_list=customers_list, form=request.form)
         for item in items:
             if item["qty"] > item["product"]["stok"]:
                 flash("Stok %s tidak mencukupi." % item["product"]["nama"], "danger")
@@ -569,14 +585,18 @@ def products():
             harga = int(request.form.get("harga") or 0)
             stok = int(request.form.get("stok") or 0)
             stok_minimum = int(request.form.get("stok_minimum") or 5)
+            min_order = max(0, int(request.form.get("min_order") or 0))
         except (TypeError, ValueError):
             flash("Harga dan stok harus berupa angka.", "danger")
             return redirect(url_for("finance.products"))
         data = (
             request.form.get("nama", "").strip(),
             request.form.get("deskripsi", "").strip(),
+            request.form.get("deskripsi_panjang", "").strip(),
+            request.form.get("rekomendasi", "").strip(),
+            request.form.get("ketentuan", "").strip(),
             request.form.get("kategori", "Bunga Potong").strip(),
-            harga, stok, stok_minimum,
+            harga, stok, stok_minimum, min_order,
             request.form.get("satuan", "ikat").strip(),
             1 if request.form.get("aktif") else 0,
         )
@@ -587,19 +607,22 @@ def products():
             lama = database.query("SELECT gambar FROM products WHERE id = ?", (pid,), one=True)
             if gambar:
                 database.execute(
-                    "UPDATE products SET nama=?, deskripsi=?, kategori=?, harga=?, stok=?, stok_minimum=?,"
-                    " satuan=?, aktif=?, gambar=? WHERE id=?", data + (gambar, pid))
+                    "UPDATE products SET nama=?, deskripsi=?, deskripsi_panjang=?, rekomendasi=?,"
+                    " ketentuan=?, kategori=?, harga=?, stok=?, stok_minimum=?, min_order=?, satuan=?,"
+                    " aktif=?, gambar=? WHERE id=?", data + (gambar, pid))
                 if lama and lama["gambar"]:
                     helpers.delete_upload(lama["gambar"])
             else:
                 database.execute(
-                    "UPDATE products SET nama=?, deskripsi=?, kategori=?, harga=?, stok=?, stok_minimum=?,"
-                    " satuan=?, aktif=? WHERE id=?", data + (pid,))
+                    "UPDATE products SET nama=?, deskripsi=?, deskripsi_panjang=?, rekomendasi=?,"
+                    " ketentuan=?, kategori=?, harga=?, stok=?, stok_minimum=?, min_order=?, satuan=?,"
+                    " aktif=? WHERE id=?", data + (pid,))
             flash("Produk diperbarui.", "success")
         else:
             database.execute(
-                "INSERT INTO products (nama, deskripsi, kategori, harga, stok, stok_minimum, satuan, aktif,"
-                " gambar, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO products (nama, deskripsi, deskripsi_panjang, rekomendasi, ketentuan,"
+                " kategori, harga, stok, stok_minimum, min_order, satuan, aktif, gambar, created_at)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 data + (gambar, database.now()))
             flash("Produk baru ditambahkan.", "success")
         return redirect(url_for("finance.products"))

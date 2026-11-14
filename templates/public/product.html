@@ -34,7 +34,9 @@
         {% else %}
           <span class="badge bg-danger-subtle text-danger-emphasis">Stok habis</span>
         {% endif %}
-        <span class="badge bg-light text-muted">Minimum order 1 {{ product.satuan }}</span>
+        {% if product.min_order %}
+        <span class="badge bg-light text-muted">Minimum order {{ product.min_order }} {{ product.satuan }}</span>
+        {% endif %}
       </div>
 
       <div class="rf-card p-3 mb-3">
@@ -64,6 +66,39 @@
       </div>
     </div>
   </div>
+
+  {% if product.deskripsi_panjang or product.rekomendasi or product.ketentuan %}
+  <div class="row g-3 mt-4">
+    {% if product.deskripsi_panjang %}
+    <div class="col-lg-6">
+      <div class="rf-card p-3 p-md-4 h-100">
+        <h6 class="fw-bold mb-2">Tentang produk</h6>
+        <div class="small text-muted" style="white-space:pre-line">{{ product.deskripsi_panjang }}</div>
+      </div>
+    </div>
+    {% endif %}
+    <div class="col-lg-6">
+      <div class="row g-3 h-100">
+        {% if product.rekomendasi %}
+        <div class="col-12">
+          <div class="rf-card p-3 p-md-4">
+            <h6 class="fw-bold mb-2"><i class="bi bi-stars text-rf me-1"></i>Rekomendasi</h6>
+            <div class="small text-muted" style="white-space:pre-line">{{ product.rekomendasi }}</div>
+          </div>
+        </div>
+        {% endif %}
+        {% if product.ketentuan %}
+        <div class="col-12">
+          <div class="rf-card p-3 p-md-4">
+            <h6 class="fw-bold mb-2"><i class="bi bi-info-circle text-rf me-1"></i>Ketentuan</h6>
+            <div class="small text-muted" style="white-space:pre-line">{{ product.ketentuan }}</div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
   {% if related %}
   <h5 class="fw-bold mt-5 mb-3">Produk serupa</h5>

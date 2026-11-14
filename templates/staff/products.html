@@ -1,16 +1,18 @@
 {% extends "panel_base.html" %}
 {% block title %}Data Produk{% endblock %}
 {% block heading %}Data Produk{% endblock %}
-{% block subheading %}Kelola produk, harga, dan stok minimum{% endblock %}
+{% block subheading %}Kelola produk, harga, stok, dan detail produk{% endblock %}
 {% block content %}
 <div class="d-flex flex-wrap gap-2 justify-content-between mb-3">
   <form class="d-flex gap-2" method="get">
     <input name="q" class="form-control form-control-sm" placeholder="Cari produk / kategori" value="{{ q }}">
     <button class="btn btn-sm btn-outline-rf">Cari</button>
   </form>
+  {% if boleh_kelola %}
   <button class="btn btn-primary btn-sm" onclick="openProduct()">
     <i class="bi bi-plus-lg me-1"></i> Tambah Produk
   </button>
+  {% endif %}
 </div>
 
 <div class="rf-card p-0 overflow-hidden">
@@ -18,7 +20,8 @@
     <table class="table table-rf align-middle mb-0">
       <thead>
         <tr><th>Produk</th><th>Kategori</th><th class="text-end">Harga</th>
-        <th class="text-center">Stok</th><th class="text-center">Min</th><th class="text-center">Status</th><th class="text-end">Aksi</th></tr>
+        <th class="text-center">Stok</th><th class="text-center">Min</th><th class="text-center">Min. Order</th>
+        <th class="text-center">Status</th><th class="text-end">Aksi</th></tr>
       </thead>
       <tbody>
         {% for p in rows %}
@@ -40,6 +43,7 @@
           <td class="text-end fw-semibold">{{ rupiah(p.harga) }}</td>
           <td class="text-center">{{ p.stok }} {{ p.satuan }}</td>
           <td class="text-center small text-muted">{{ p.stok_minimum }}</td>
+          <td class="text-center small">{{ p.min_order or '—' }}</td>
           <td class="text-center">
             {% if not p.aktif %}
               <span class="badge bg-secondary-subtle text-secondary-emphasis">Nonaktif</span>
@@ -52,6 +56,7 @@
             {% endif %}
           </td>
           <td class="text-end text-nowrap">
+            {% if boleh_kelola %}
             <button class="btn btn-sm btn-light" onclick='openProduct({{ p|tojson }})' title="Ubah"><i class="bi bi-pencil"></i></button>
             {% if p.gambar %}
             <form method="post" action="{{ url_for('staff.product_photo_delete', pid=p.id) }}" class="d-inline"
@@ -63,10 +68,13 @@
                   onsubmit="return confirm('Hapus produk {{ p.nama }}?')">
               <button class="btn btn-sm btn-light text-danger" title="Hapus produk"><i class="bi bi-trash"></i></button>
             </form>
+            {% else %}
+            <button class="btn btn-sm btn-light" onclick='openProduct({{ p|tojson }})' title="Lihat detail"><i class="bi bi-eye"></i></button>
+            {% endif %}
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="7"><div class="rf-empty">Belum ada produk.</div></td></tr>
+        <tr><td colspan="8"><div class="rf-empty">Belum ada produk.</div></td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -109,8 +117,24 @@
           </datalist>
         </div>
         <div class="col-12">
-          <label class="form-label small fw-semibold">Deskripsi</label>
-          <textarea name="deskripsi" id="p_deskripsi" class="form-control" rows="2"></textarea>
+          <label class="form-label small fw-semibold">Deskripsi singkat</label>
+          <textarea name="deskripsi" id="p_deskripsi" class="form-control" rows="2"
+                    placeholder="Ringkasan singkat yang tampil di kartu katalog"></textarea>
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Deskripsi panjang</label>
+          <textarea name="deskripsi_panjang" id="p_deskripsi_panjang" class="form-control" rows="4"
+                    placeholder="Penjelasan lengkap produk untuk halaman detail"></textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Rekomendasi produk</label>
+          <textarea name="rekomendasi" id="p_rekomendasi" class="form-control" rows="3"
+                    placeholder="Saran penggunaan / produk pendamping"></textarea>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Ketentuan produk</label>
+          <textarea name="ketentuan" id="p_ketentuan" class="form-control" rows="3"
+                    placeholder="Syarat pesanan, pengiriman, atau pengembalian"></textarea>
         </div>
         <div class="col-md-4">
           <label class="form-label small fw-semibold">Harga (Rp)</label>
@@ -125,10 +149,15 @@
           <input type="number" name="stok_minimum" id="p_min" class="form-control" min="0" value="5">
         </div>
         <div class="col-md-4">
+          <label class="form-label small fw-semibold">Minimal order</label>
+          <input type="number" name="min_order" id="p_min_order" class="form-control" min="0" value="0">
+          <div class="form-text">0 = tanpa minimal order.</div>
+        </div>
+        <div class="col-md-4">
           <label class="form-label small fw-semibold">Satuan</label>
           <input name="satuan" id="p_satuan" class="form-control" value="ikat">
         </div>
-        <div class="col-md-8 d-flex align-items-end">
+        <div class="col-md-4 d-flex align-items-end">
           <div class="form-check">
             <input class="form-check-input" type="checkbox" name="aktif" id="p_aktif" checked>
             <label class="form-check-label small" for="p_aktif">Tampilkan di katalog</label>
@@ -137,7 +166,7 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-light" type="button" data-bs-dismiss="modal">Batal</button>
-        <button class="btn btn-primary">Simpan</button>
+        {% if boleh_kelola %}<button class="btn btn-primary">Simpan</button>{% endif %}
       </div>
     </form>
   </div>
@@ -148,16 +177,25 @@
 <script>
 const UPLOAD_BASE = '{{ url_for("static", filename="uploads") }}/';
 
+const BOLEH_KELOLA = {{ 'true' if boleh_kelola else 'false' }};
+
 function openProduct(data) {
-  document.getElementById('prodTitle').textContent = data ? 'Ubah Produk' : 'Tambah Produk';
+  document.getElementById('prodTitle').textContent = data
+    ? (BOLEH_KELOLA ? 'Ubah Produk' : 'Detail Produk') : 'Tambah Produk';
+  document.querySelectorAll('#prodModal input, #prodModal textarea, #prodModal select')
+    .forEach(el => { el.disabled = !BOLEH_KELOLA; });
   const set = (id, v) => document.getElementById(id).value = (v === null || v === undefined) ? '' : v;
   set('p_id', data?.id);
   set('p_nama', data?.nama);
   set('p_kategori', data ? data.kategori : 'Bunga Potong');
   set('p_deskripsi', data?.deskripsi);
+  set('p_deskripsi_panjang', data?.deskripsi_panjang);
+  set('p_rekomendasi', data?.rekomendasi);
+  set('p_ketentuan', data?.ketentuan);
   set('p_harga', data?.harga ?? '');
   set('p_stok', data?.stok ?? 0);
   set('p_min', data?.stok_minimum ?? 5);
+  set('p_min_order', data?.min_order ?? 0);
   set('p_satuan', data ? data.satuan : 'ikat');
   document.getElementById('p_aktif').checked = data ? !!data.aktif : true;
   document.getElementById('p_gambar').value = '';

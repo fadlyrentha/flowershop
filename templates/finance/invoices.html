@@ -73,13 +73,23 @@
           <label class="form-label small fw-semibold">Order terkait</label>
           <select name="order_id" id="i_order" class="form-select">
             <option value="">— Tanpa order —</option>
-            {% for o in orders %}<option value="{{ o.id }}" data-nama="{{ o.nama_pelanggan }}" data-total="{{ o.total }}">
+            {% for o in orders %}<option value="{{ o.id }}" data-nama="{{ o.nama_pelanggan }}"
+              data-subtotal="{{ o.subtotal }}" data-ongkir="{{ o.ongkir }}">
               {{ o.kode }} · {{ o.nama_pelanggan }}</option>{% endfor %}
           </select>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
+          <label class="form-label small fw-semibold">Subtotal (Rp)</label>
+          <input type="number" name="subtotal" id="i_subtotal" class="form-control" min="0" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label small fw-semibold">Ongkir (Rp)</label>
+          <input type="number" name="ongkir" id="i_ongkir" class="form-control" min="0" value="0">
+        </div>
+        <div class="col-md-4">
           <label class="form-label small fw-semibold">Total (Rp)</label>
-          <input type="number" name="total" id="i_total" class="form-control" min="0" required>
+          <input type="number" name="total" id="i_total" class="form-control" min="0" readonly>
+          <div class="form-text">Subtotal + ongkir</div>
         </div>
         <div class="col-md-4">
           <label class="form-label small fw-semibold">Kode tagihan</label>
@@ -124,18 +134,30 @@ function openInvoice(data) {
   set('i_nomor', data ? data.nomor : 'INV-' + Date.now().toString().slice(-8));
   set('i_nama', data?.nama_pelanggan);
   set('i_order', data?.order_id);
-  set('i_total', data?.total ?? '');
+  set('i_subtotal', data?.subtotal ?? '');
+  set('i_ongkir', data?.ongkir ?? 0);
+  hitungTotal();
   set('i_kode', data ? data.kode_tagihan : 'Reguler');
   set('i_status', data ? data.status : 'Belum Dibayar');
   set('i_jt', data ? data.jatuh_tempo : today.toISOString().slice(0, 10));
   set('i_user', data?.user_id);
   new bootstrap.Modal(document.getElementById('invModal')).show();
 }
+function hitungTotal() {
+  const sub = parseInt(document.getElementById('i_subtotal').value) || 0;
+  const ongkir = parseInt(document.getElementById('i_ongkir').value) || 0;
+  document.getElementById('i_total').value = sub + ongkir;
+}
+document.getElementById('i_subtotal').addEventListener('input', hitungTotal);
+document.getElementById('i_ongkir').addEventListener('input', hitungTotal);
+
 document.getElementById('i_order').addEventListener('change', e => {
   const opt = e.target.options[e.target.selectedIndex];
   if (!e.target.value) return;
   document.getElementById('i_nama').value = opt.dataset.nama || '';
-  document.getElementById('i_total').value = opt.dataset.total || 0;
+  document.getElementById('i_subtotal').value = opt.dataset.subtotal || 0;
+  document.getElementById('i_ongkir').value = opt.dataset.ongkir || 0;
+  hitungTotal();
 });
 </script>
 {% endblock %}

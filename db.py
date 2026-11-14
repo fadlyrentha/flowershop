@@ -116,10 +116,14 @@ CREATE TABLE IF NOT EXISTS products (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nama TEXT NOT NULL,
     deskripsi TEXT DEFAULT '',
+    deskripsi_panjang TEXT DEFAULT '',
+    rekomendasi TEXT DEFAULT '',
+    ketentuan TEXT DEFAULT '',
     kategori TEXT DEFAULT 'Bunga Potong',
     harga INTEGER NOT NULL DEFAULT 0,
     stok INTEGER NOT NULL DEFAULT 0,
     stok_minimum INTEGER DEFAULT 5,
+    min_order INTEGER NOT NULL DEFAULT 0,
     satuan TEXT DEFAULT 'ikat',
     gambar TEXT DEFAULT '',
     aktif INTEGER NOT NULL DEFAULT 1,
@@ -228,7 +232,9 @@ CREATE TABLE IF NOT EXISTS invoices (
     order_id INTEGER,
     user_id INTEGER,
     nama_pelanggan TEXT DEFAULT '',
+    subtotal INTEGER NOT NULL DEFAULT 0,
     total INTEGER NOT NULL DEFAULT 0,
+    ongkir INTEGER NOT NULL DEFAULT 0,
     kode_tagihan TEXT NOT NULL DEFAULT 'Reguler',
     status TEXT NOT NULL DEFAULT 'Belum Dibayar',
     jatuh_tempo TEXT DEFAULT '',
@@ -962,6 +968,30 @@ def _migrate(db):
         db.execute("INSERT OR REPLACE INTO settings (key, value)"
                    " VALUES ('migrasi_metode_pengiriman', '1')")
         db.commit()
+    cols = {r["name"] for r in db.execute("PRAGMA table_info(products)")}
+    if "min_order" not in cols:
+        db.execute("ALTER TABLE products ADD COLUMN min_order INTEGER NOT NULL DEFAULT 0")
+        db.commit()
+    for kolom in ("deskripsi_panjang", "rekomendasi", "ketentuan"):
+        if kolom not in cols:
+            db.execute("ALTER TABLE products ADD COLUMN %s TEXT DEFAULT ''" % kolom)
+            db.commit()
+    cols = {r["name"] for r in db.execute("PRAGMA table_info(invoices)")}
+    if "subtotal" not in cols:
+        db.execute("ALTER TABLE invoices ADD COLUMN subtotal INTEGER NOT NULL DEFAULT 0")
+        db.commit()
+    if "ongkir" not in cols:
+        db.execute("ALTER TABLE invoices ADD COLUMN ongkir INTEGER NOT NULL DEFAULT 0")
+        db.commit()
+    # Faktur lama: isi rincian dari order terkait agar kolom faktur tidak kosong.
+    if "migrasi_faktur_ongkir" not in {r["key"] for r in db.execute("SELECT key FROM settings")}:
+        db.execute("UPDATE invoices SET"
+                   " ongkir = COALESCE((SELECT o.ongkir FROM orders o WHERE o.id = invoices.order_id),"
+                   "                   invoices.ongkir),"
+                   " subtotal = COALESCE((SELECT o.subtotal FROM orders o WHERE o.id = invoices.order_id),"
+                   "                     MAX(0, invoices.total - invoices.ongkir))")
+        db.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('migrasi_faktur_ongkir', '1')")
+        db.commit()
     # Panel konfigurasi baru: sediakan baris hak akses agar menunya langsung tampil.
     done = db.execute("SELECT value FROM settings WHERE key = 'migrasi_konfigurasi_panel'").fetchone()
     if not done:
@@ -1192,9 +1222,9 @@ def seed_demo():
     )
 
     execute(
-        "INSERT INTO invoices (nomor, nomor_invoice, order_id, user_id, nama_pelanggan, total, status,"
-        " jatuh_tempo, created_at)"
-        " SELECT kode, 'INV-' || id, id, user_id, nama_pelanggan, total,"
+        "INSERT INTO invoices (nomor, nomor_invoice, order_id, user_id, nama_pelanggan, subtotal, total,"
+        " ongkir, status, jatuh_tempo, created_at)"
+        " SELECT kode, 'INV-' || id, id, user_id, nama_pelanggan, subtotal, total, ongkir,"
         " CASE WHEN status_bayar = 'Lunas' THEN 'Lunas' ELSE 'Belum Dibayar' END,"
         " date(created_at, '+7 day'), created_at FROM orders",
     )

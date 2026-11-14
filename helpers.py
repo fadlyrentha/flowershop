@@ -178,6 +178,28 @@ def parse_items(form):
     return items
 
 
+# Peran yang boleh menambah, mengubah, dan menghapus produk beserta detailnya.
+PRODUK_EDITOR_ROLES = ("administrator", "staff_keuangan")
+
+
+def boleh_kelola_produk(user=None):
+    user = user or current_user()
+    return bool(user and user["role"] in PRODUK_EDITOR_ROLES)
+
+
+def min_order_error(items):
+    """Pesan kesalahan bila ada produk yang jumlahnya di bawah minimal order.
+
+    Produk dengan min_order 0 berarti tanpa batas minimal.
+    """
+    for item in items:
+        minimal = item["product"]["min_order"] or 0
+        if minimal and item["qty"] < minimal:
+            return ("Jumlah %s minimal %d %s per pesanan."
+                    % (item["product"]["nama"], minimal, item["product"]["satuan"] or ""))
+    return ""
+
+
 def create_order(items, nama, telepon, alamat, catatan, metode_bayar, pengiriman,
                  user_id=None, dibuat_oleh=None, status="Menunggu Konfirmasi",
                  kode_tagihan="Reguler"):
@@ -211,10 +233,11 @@ def create_order(items, nama, telepon, alamat, catatan, metode_bayar, pengiriman
             (product["id"], item["qty"], kode, dibuat_oleh, created),
         )
     database.execute(
-        "INSERT INTO invoices (nomor, nomor_invoice, order_id, user_id, nama_pelanggan, total, kode_tagihan,"
-        " status, jatuh_tempo, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'Belum Dibayar', ?, ?)",
+        "INSERT INTO invoices (nomor, nomor_invoice, order_id, user_id, nama_pelanggan, subtotal, total,"
+        " ongkir, kode_tagihan, status, jatuh_tempo, created_at)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Belum Dibayar', ?, ?)",
         (database.next_number("nomor_faktur"), database.next_number("nomor_invoice"),
-         order_id, user_id, nama, total, kode_tagihan,
+         order_id, user_id, nama, subtotal, total, ongkir, kode_tagihan,
          (database.datetime.now() + database.timedelta(days=7)).strftime("%Y-%m-%d"), created),
     )
     notify_roles(

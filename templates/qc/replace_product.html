@@ -77,7 +77,8 @@
           <select name="product_id" class="form-select" required>
             <option value="">— Pilih produk —</option>
             {% for p in products %}
-            <option value="{{ p.id }}">{{ p.nama }} · {{ rupiah(p.harga) }}/{{ p.satuan }} (stok {{ p.stok }})</option>
+            <option value="{{ p.id }}">{{ p.nama }} · {{ rupiah(p.harga) }}/{{ p.satuan }} (stok {{ p.stok }})
+              {%- if p.min_order %} · min {{ p.min_order }}{% endif %}</option>
             {% endfor %}
           </select>
         </div>
@@ -123,7 +124,8 @@
           <select name="product_id" class="form-select" required>
             <option value="">— Pilih produk —</option>
             {% for p in products %}
-            <option value="{{ p.id }}">{{ p.nama }} · {{ rupiah(p.harga) }}/{{ p.satuan }} (stok {{ p.stok }})</option>
+            <option value="{{ p.id }}">{{ p.nama }} · {{ rupiah(p.harga) }}/{{ p.satuan }} (stok {{ p.stok }})
+              {%- if p.min_order %} · min {{ p.min_order }}{% endif %}</option>
             {% endfor %}
           </select>
         </div>

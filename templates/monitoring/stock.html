@@ -13,7 +13,8 @@
     <table class="table table-rf align-middle mb-0">
       <thead>
         <tr><th>Produk</th><th>Kategori</th><th class="text-end">Harga</th>
-        <th class="text-center">Stok</th><th class="text-center">Minimum</th><th>Status</th></tr>
+        <th class="text-center">Stok</th><th class="text-center">Minimum</th>
+        <th class="text-center">Min. Order</th><th>Status</th></tr>
       </thead>
       <tbody>
         {% for p in rows %}
@@ -23,6 +24,7 @@
           <td class="text-end small">{{ rupiah(p.harga) }}</td>
           <td class="text-center fw-semibold {{ 'text-danger' if p.stok <= p.stok_minimum }}">{{ p.stok }}</td>
           <td class="text-center small text-muted">{{ p.stok_minimum }}</td>
+          <td class="text-center small">{{ p.min_order or '—' }}</td>
           <td>
             {% if not p.aktif %}
             <span class="rf-chip gray">Nonaktif</span>
@@ -34,7 +36,7 @@
           </td>
         </tr>
         {% else %}
-        <tr><td colspan="6"><div class="rf-empty">Tidak ada produk.</div></td></tr>
+        <tr><td colspan="7"><div class="rf-empty">Tidak ada produk.</div></td></tr>
         {% endfor %}
       </tbody>
     </table>

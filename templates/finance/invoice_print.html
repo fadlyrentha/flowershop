@@ -61,7 +61,13 @@
     {% endif %}
     <div class="row justify-content-end">
       <div class="col-md-5">
-        <div class="d-flex justify-content-between fw-bold border-top pt-2">
+        <div class="d-flex justify-content-between small">
+          <span class="text-muted">Subtotal</span><span>{{ rupiah(invoice.subtotal or (order.subtotal if order else 0)) }}</span>
+        </div>
+        <div class="d-flex justify-content-between small">
+          <span class="text-muted">Ongkir</span><span>{{ rupiah(invoice.ongkir) }}</span>
+        </div>
+        <div class="d-flex justify-content-between fw-bold border-top pt-2 mt-1">
           <span>Total Tagihan</span><span class="text-rf">{{ rupiah(invoice.total) }}</span>
         </div>
       </div>
