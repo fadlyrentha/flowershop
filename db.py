@@ -356,6 +356,7 @@ DEFAULT_SETTINGS = {
     "invoice_logo_ukuran": "sedang",
     "backup_jadwal": "off",
     "backup_terakhir": "",
+    "restore_terakhir": "",
     "format_nomor_order": "INV{YYYY}{MM}{DD}-{SEQ:4}",
     "format_nomor_faktur": "FK{YYYY}{MM}{DD}-{SEQ:4}",
     "format_nomor_invoice": "INV{YYYY}{MM}{DD}-{SEQ:4}",
@@ -815,6 +816,75 @@ def auto_backup():
         if last and (datetime.now() - last).days < BACKUP_JADWAL[jadwal]:
             return None
     return create_backup(jadwal)
+
+
+# Tabel yang harus ada agar sebuah berkas .db dianggap backup aplikasi ini.
+TABEL_WAJIB_BACKUP = ("users", "products", "orders", "order_items", "invoices",
+                      "settings", "role_features")
+
+
+def periksa_backup(path):
+    """Periksa berkas backup sebelum dipulihkan. Mengembalikan (valid, pesan).
+
+    Selain integritas SQLite, tabel inti diperiksa supaya berkas asing tidak
+    bisa menimpa database toko.
+    """
+    try:
+        conn = sqlite3.connect(path)
+        try:
+            hasil = conn.execute("PRAGMA integrity_check").fetchone()
+            if not hasil or hasil[0] != "ok":
+                return False, "Berkas rusak: pemeriksaan integritas database gagal."
+            tabel = {r[0] for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'")}
+            hilang = [t for t in TABEL_WAJIB_BACKUP if t not in tabel]
+            if hilang:
+                return False, ("Berkas ini bukan backup Rasty Florist "
+                               "(tabel %s tidak ditemukan)." % ", ".join(hilang))
+            akun = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+            produk = conn.execute("SELECT COUNT(*) FROM products").fetchone()[0]
+        finally:
+            conn.close()
+    except (sqlite3.Error, OSError) as exc:
+        return False, "Berkas tidak bisa dibaca sebagai database: %s" % exc
+    return True, "%d akun dan %d produk" % (akun, produk)
+
+
+def pulihkan_backup(path):
+    """Ganti database aktif dengan isi berkas backup.
+
+    Keadaan sekarang dicadangkan lebih dulu dengan label 'sebelum-restore',
+    sehingga pemulihan yang salah pilih masih bisa dibatalkan. Mengembalikan
+    (berhasil, pesan).
+    """
+    valid, pesan = periksa_backup(path)
+    if not valid:
+        return False, pesan
+    # Cadangan dibuat SEBELUM database ditimpa, jadi berkasnya berisi keadaan
+    # sekarang. Penanda backup_terakhir yang ditulis create_backup() ikut
+    # hilang bersama database lama; nilai yang berlaku setelah pemulihan
+    # adalah nilai milik database backup itu sendiri.
+    cadangan = create_backup("sebelum-restore")
+    # Tutup koneksi request ini dulu agar berkas database tidak sedang dipegang
+    # saat isinya ditimpa.
+    aktif = g.pop("db", None)
+    if aktif is not None:
+        aktif.close()
+    sumber = sqlite3.connect(path)
+    tujuan = sqlite3.connect(current_app.config["DATABASE"], timeout=30)
+    try:
+        sumber.backup(tujuan)
+    finally:
+        tujuan.close()
+        sumber.close()
+    # Akun yang sedang login bisa saja tidak ada di database pulihan, jadi
+    # cache pengguna di request ini harus dibuang.
+    g.pop("user", None)
+    # Jalankan migrasi agar struktur database pulihan sesuai versi aplikasi ini.
+    init_db()
+    set_setting("restore_terakhir", now())
+    return True, ("Database dipulihkan (%s). Cadangan keadaan sebelumnya: %s"
+                  % (pesan, cadangan))
 
 
 # ------------------------------------------------------------------ reset ----

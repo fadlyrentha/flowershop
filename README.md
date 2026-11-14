@@ -21,7 +21,9 @@ sudo DOMAIN=toko.example.com bash /opt/rasty-florist/installer/setup_nginx.sh
 Memasang nginx, gunicorn, SQLite, certbot (HTTPS Let's Encrypt), firewall UFW,
 backup harian otomatis, layanan systemd, dan akun administrator. Langkah
 lengkap, termasuk backup, pemulihan, pembaruan, dan penanganan masalah, ada di
-[PANDUAN-INSTALL-UBUNTU.md](PANDUAN-INSTALL-UBUNTU.md).
+[PANDUAN-INSTALL-UBUNTU.md](PANDUAN-INSTALL-UBUNTU.md). Khusus pembaruan rutin
+(kode, skema database, dan data toko) lihat
+[PANDUAN-UPDATE-UBUNTU.md](PANDUAN-UPDATE-UBUNTU.md).
 
 ### Windows (toko)
 

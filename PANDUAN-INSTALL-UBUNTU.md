@@ -246,6 +246,11 @@ sudo chown -R rasty:www-data /var/lib/rasty-florist/uploads
 Database menyimpan nama berkas foto, bukan isinya — jadi **database dan
 unggahan harus dipulihkan bersama**.
 
+Administrator juga bisa memulihkan tanpa SSH lewat **Administrator → Backup
+Data**: tombol pulihkan pada riwayat backup, atau unggah berkas `.db` hasil
+unduhan. Keduanya mencadangkan keadaan saat ini lebih dulu sebagai
+`sebelum-restore`, sehingga salah pilih masih bisa dibatalkan.
+
 ---
 
 ## 8. Memperbarui aplikasi
@@ -262,6 +267,9 @@ Pemasang menyalin ulang kode, memperbarui dependensi, menjalankan migrasi
 database otomatis, dan menyalakan ulang layanan. Database, unggahan, dan
 konfigurasi lama tetap dipakai. Perubahan skema database (kolom/tabel baru)
 ditangani otomatis oleh mekanisme migrasi di `db.py`.
+
+Untuk pembaruan rutin, pembaruan data lewat SQL, pemulihan saat gagal, dan
+kesalahan yang sering terjadi, lihat **`PANDUAN-UPDATE-UBUNTU.md`**.
 
 ---
 

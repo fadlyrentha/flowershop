@@ -615,6 +615,71 @@ if nama_backup:
     r = admin.post("/admin/backup/%s/hapus" % nama_backup, follow_redirects=True)
     if r.status_code != 200:
         errors.append(("backup hapus", r.status_code))
+
+# 7b4. Pulihkan database dari berkas backup (riwayat & unggahan)
+r = admin.post("/admin/backup", data={"aksi": "buat"}, follow_redirects=True)
+nama_pulih = ""
+jalur_pulih = None
+with app.app_context():
+    import db as database
+    daftar = database.list_backups()
+    if daftar:
+        nama_pulih = daftar[0]["nama"]
+    else:
+        errors.append(("backup untuk pemulihan tidak dibuat",))
+# Data yang ditambahkan setelah backup harus hilang setelah pemulihan.
+with app.app_context():
+    import db as database
+    database.execute(
+        "INSERT INTO products (nama, kategori, harga, stok, stok_minimum, satuan, aktif, created_at)"
+        " VALUES ('Produk Sebelum Pulih', 'Lainnya', 1000, 1, 1, 'ikat', 1, ?)", (database.now(),))
+if nama_pulih:
+    r = admin.post("/admin/backup/%s/pulihkan" % nama_pulih, follow_redirects=True)
+    if r.status_code != 200:
+        errors.append(("pulihkan backup riwayat", r.status_code))
+    with app.app_context():
+        import db as database
+        if database.query("SELECT id FROM products WHERE nama = 'Produk Sebelum Pulih'", one=True):
+            errors.append(("pulihkan backup tidak mengembalikan data",))
+        if not database.get_setting("restore_terakhir"):
+            errors.append(("waktu pemulihan tidak dicatat",))
+        # Keadaan sebelum pemulihan harus tercadangkan otomatis.
+        if not any(b["nama"].startswith("rasty-sebelum-restore-")
+                   for b in database.list_backups()):
+            errors.append(("cadangan sebelum-restore tidak dibuat",))
+        jalur_pulih = database.backup_path(nama_pulih)
+
+# Unggah berkas backup lalu pulihkan dari unggahan itu.
+with app.app_context():
+    import db as database
+    database.execute(
+        "INSERT INTO products (nama, kategori, harga, stok, stok_minimum, satuan, aktif, created_at)"
+        " VALUES ('Produk Setelah Pulih', 'Lainnya', 1000, 1, 1, 'ikat', 1, ?)", (database.now(),))
+if jalur_pulih:
+    with open(jalur_pulih, "rb") as fh:
+        r = admin.post("/admin/backup/unggah", data={"berkas": (io.BytesIO(fh.read()), "pulih.db")},
+                       content_type="multipart/form-data", follow_redirects=True)
+    if r.status_code != 200:
+        errors.append(("unggah backup", r.status_code))
+    with app.app_context():
+        import db as database
+        if database.query("SELECT id FROM products WHERE nama = 'Produk Setelah Pulih'", one=True):
+            errors.append(("pulihkan dari unggahan tidak berjalan",))
+# Berkas asing harus ditolak, bukan menimpa database.
+r = admin.post("/admin/backup/unggah",
+               data={"berkas": (io.BytesIO(b"bukan database"), "asing.db")},
+               content_type="multipart/form-data", follow_redirects=True)
+if r.status_code != 200 or not (b"tidak bisa dibaca" in r.data or b"bukan backup" in r.data):
+    errors.append(("berkas backup asing tidak ditolak", r.status_code))
+with app.app_context():
+    import db as database
+    if database.query("SELECT id FROM products WHERE nama = 'Produk Setelah Pulih'", one=True):
+        errors.append(("database berubah setelah unggahan ditolak",))
+    # Berkas sementara tidak boleh tertinggal di folder backup.
+    import os
+    if any(n.startswith("unggahan-") for n in os.listdir(database.backup_dir())):
+        errors.append(("berkas unggahan sementara tertinggal",))
+
 r = admin.post("/admin/backup", data={"aksi": "jadwal", "backup_jadwal": "harian"},
                follow_redirects=True)
 if r.status_code != 200:

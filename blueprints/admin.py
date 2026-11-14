@@ -1,10 +1,12 @@
 """Halaman administrator: CMS beranda, pengaturan situs, staff, hak akses."""
 import json
 import os
+import time
+import uuid
 from datetime import datetime
 
 from flask import (Blueprint, abort, current_app, flash, redirect, render_template,
-                   request, send_file, url_for)
+                   request, send_file, session, url_for)
 from werkzeug.security import generate_password_hash
 
 import db as database
@@ -73,7 +75,8 @@ def guard():
 
 STAFF_ONLY = ("accounts", "account_delete", "permissions", "settings", "dashboard",
               "nomor_format", "invoice_template", "invoice_template_delete_design",
-              "backup", "backup_download", "backup_delete", "katalog", "rekening", "reset",
+              "backup", "backup_download", "backup_delete", "backup_upload", "backup_restore",
+              "katalog", "rekening", "reset",
               "pengiriman", "jam_operasional", "menu_publik")
 
 
@@ -547,7 +550,75 @@ def backup():
         rows=database.list_backups(),
         jadwal=database.get_setting("backup_jadwal", "off"),
         jadwal_pilihan=database.BACKUP_JADWAL,
-        terakhir=database.get_setting("backup_terakhir", ""))
+        terakhir=database.get_setting("backup_terakhir", ""),
+        restore_terakhir=database.get_setting("restore_terakhir", ""))
+
+
+def _unggah_backup_sementara():
+    """Simpan berkas backup yang diunggah ke folder sementara. Mengembalikan (path, pesan)."""
+    berkas = request.files.get("berkas")
+    if not berkas or not berkas.filename:
+        return None, "Pilih berkas backup (.db) yang ingin dipulihkan."
+    if not berkas.filename.lower().endswith(".db"):
+        return None, "Berkas harus berekstensi .db hasil fitur backup aplikasi ini."
+    # Disimpan di folder backup, bukan folder unggahan: isi folder unggahan
+    # disajikan lewat URL, sedangkan berkas database tidak boleh bisa diunduh
+    # siapa pun. Nama acak dipakai agar tidak menimpa berkas lain.
+    # Akhiran sengaja bukan .db agar berkas sementara tidak muncul di riwayat.
+    folder = database.backup_dir()
+    # Sisa unggahan yang gagal di tengah jalan (misalnya koneksi putus) dibuang
+    # agar folder backup tidak menumpuk berkas yatim. Hanya berkas berumur > 1
+    # jam yang dihapus supaya unggahan lain yang sedang berjalan tidak tersentuh.
+    batas = time.time() - 3600
+    for lama in os.listdir(folder):
+        if not lama.startswith("unggahan-"):
+            continue
+        jalur_lama = os.path.join(folder, lama)
+        try:
+            if os.path.getmtime(jalur_lama) < batas:
+                os.remove(jalur_lama)
+        except OSError:
+            pass
+    path = os.path.join(folder, "unggahan-" + uuid.uuid4().hex + ".db.unggah")
+    berkas.save(path)
+    return path, ""
+
+
+@bp.route("/backup/unggah", methods=["POST"])
+@helpers.feature_required("backup")
+def backup_upload():
+    """Pulihkan database dari berkas backup .db yang diunggah."""
+    path, pesan = _unggah_backup_sementara()
+    if path is None:
+        flash(pesan, "danger")
+        return redirect(url_for("admin.backup"))
+    try:
+        berhasil, pesan = database.pulihkan_backup(path)
+    finally:
+        if os.path.isfile(path):
+            os.remove(path)
+    # Sesi milik akun yang tidak ada lagi di database pulihan harus dibuang.
+    if berhasil and helpers.current_user() is None:
+        session.clear()
+        return redirect(url_for("auth.login"))
+    flash(pesan, "success" if berhasil else "danger")
+    return redirect(url_for("admin.backup"))
+
+
+@bp.route("/backup/<string:nama>/pulihkan", methods=["POST"])
+@helpers.feature_required("backup")
+def backup_restore(nama):
+    """Pulihkan database dari berkas backup yang sudah ada di server."""
+    path = database.backup_path(nama)
+    if path is None:
+        flash("Berkas backup tidak ditemukan.", "warning")
+        return redirect(url_for("admin.backup"))
+    berhasil, pesan = database.pulihkan_backup(path)
+    if berhasil and helpers.current_user() is None:
+        session.clear()
+        return redirect(url_for("auth.login"))
+    flash(pesan, "success" if berhasil else "danger")
+    return redirect(url_for("admin.backup"))
 
 
 @bp.route("/backup/<string:nama>/unduh")
