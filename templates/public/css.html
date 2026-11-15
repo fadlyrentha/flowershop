@@ -193,6 +193,25 @@ a:hover { color: var(--rf-primary); opacity: .82; }
   font-size: .8rem; font-weight: 600;
 }
 .rf-quote { font-size: .95rem; line-height: 1.65; }
+
+/* Story sosial media: deretan lingkaran yang bisa digeser mendatar. */
+.rf-story { width: 84px; text-align: center; text-decoration: none; color: inherit; }
+.rf-story-ring {
+  display: grid; place-items: center; width: 76px; height: 76px; border-radius: 50%;
+  padding: 3px; background: conic-gradient(from 200deg, #f9ce34, #ee2a7b, #6228d7, #f9ce34);
+}
+.rf-story-ring img, .rf-story-kosong {
+  width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
+  border: 3px solid #fff; background: var(--rf-soft);
+}
+.rf-story-kosong {
+  display: grid; place-items: center; font-size: 1.4rem; color: var(--rf-primary);
+}
+.rf-story-nama {
+  display: block; margin-top: .35rem; font-size: .72rem; font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.rf-story:hover .rf-story-nama { color: var(--rf-primary); }
 .rf-stars { color: #f2b01e; letter-spacing: 2px; }
 .rf-empty { padding: 2.5rem 1rem; text-align: center; color: var(--rf-muted); }
 .rf-login-wrap {

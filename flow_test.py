@@ -528,6 +528,96 @@ r = admin.post("/admin/hak-akses", data={"role": "staff_gudang", "feature": ["da
 if r.status_code != 200:
     errors.append(("hak akses", r.status_code))
 
+# 7a2. Kontroler sosial media: akun, konten manual, saklar tampil, dan beranda
+r = admin.post("/admin/sosial/akun", data={
+    "platform": "instagram", "nama": "Uji Florist", "username": "ujiflorist",
+    "sumber": "manual", "jumlah_feed": "12", "jumlah_story": "10",
+    "urutan": "0", "aktif": "on", "sinkron_otomatis": "on",
+}, follow_redirects=True)
+if r.status_code != 200:
+    errors.append(("tambah akun sosial", r.status_code))
+with app.app_context():
+    import db as database
+    akun = database.query("SELECT * FROM social_accounts WHERE username = 'ujiflorist'", one=True)
+    if not akun:
+        errors.append(("akun sosial tidak tersimpan",))
+    elif akun["url"] != "https://instagram.com/ujiflorist":
+        errors.append(("url akun tidak disusun dari username", akun["url"]))
+    akun_id = akun["id"] if akun else None
+
+if akun_id:
+    r = admin.post("/admin/sosial/item", data={
+        "account_id": str(akun_id), "jenis": "story", "judul": "Story uji",
+        "caption": "coba", "link": "https://instagram.com/ujiflorist",
+        "urutan": "0", "aktif": "on",
+    }, follow_redirects=True)
+    if r.status_code != 200:
+        errors.append(("tambah konten sosial", r.status_code))
+    with app.app_context():
+        import db as database
+        item = database.query("SELECT * FROM social_items WHERE account_id = ? AND jenis = 'story'",
+                              (akun_id,), one=True)
+        if not item:
+            errors.append(("konten sosial tidak tersimpan",))
+        item_id = item["id"] if item else None
+    # Konten yang dimatikan tidak boleh muncul di beranda, lalu muncul lagi saat dinyalakan.
+    if item_id:
+        r = admin.post("/admin/sosial/item/%d/saklar" % item_id, follow_redirects=True)
+        if r.status_code != 200:
+            errors.append(("saklar konten sosial", r.status_code))
+        with app.app_context():
+            import db as database
+            if database.query("SELECT aktif FROM social_items WHERE id = ?",
+                              (item_id,), one=True)["aktif"]:
+                errors.append(("saklar konten tidak mematikan",))
+        # Beranda dikunjungi sebagai pengunjung biasa (belum masuk).
+        beranda = app.test_client().get("/")
+        if beranda.status_code != 200:
+            errors.append(("beranda dengan kontroler sosial", beranda.status_code))
+
+    # Mode non-manual tanpa URL feed harus ditolak, bukan membuat akun setengah jadi.
+    r = admin.post("/admin/sosial/akun", data={
+        "platform": "instagram", "username": "tanpafeed", "sumber": "rss",
+    }, follow_redirects=True)
+    with app.app_context():
+        import db as database
+        if database.query("SELECT 1 FROM social_accounts WHERE username = 'tanpafeed'", one=True):
+            errors.append(("akun RSS tanpa feed_url seharusnya ditolak",))
+
+    # Sinkronisasi akun manual tidak menarik apa pun tetapi tetap membalas wajar.
+    r = admin.post("/admin/sosial/akun/%d/sinkron" % akun_id, follow_redirects=True)
+    if r.status_code != 200:
+        errors.append(("sinkron akun manual", r.status_code))
+
+    # Panel kontroler mengatur jadwal sinkronisasi.
+    r = admin.post("/admin/sosial/pengaturan", data={
+        "sosial_aktif": "on", "sosial_interval": "60",
+        "sosial_feed_tampil": "8", "sosial_story_tampil": "8",
+    }, follow_redirects=True)
+    if r.status_code != 200:
+        errors.append(("pengaturan sosial", r.status_code))
+    with app.app_context():
+        import db as database
+        if database.get_setting("sosial_interval") != "60":
+            errors.append(("interval sosial tidak tersimpan",))
+
+    r = admin.post("/admin/sosial/akun/%d/hapus" % akun_id, follow_redirects=True)
+    if r.status_code != 200:
+        errors.append(("hapus akun sosial", r.status_code))
+    with app.app_context():
+        import db as database
+        if database.query("SELECT 1 FROM social_accounts WHERE id = ?", (akun_id,), one=True):
+            errors.append(("akun sosial tidak terhapus",))
+        if database.query("SELECT 1 FROM social_items WHERE account_id = ?", (akun_id,), one=True):
+            errors.append(("konten akun tidak ikut terhapus",))
+        if database.query("SELECT 1 FROM social_accounts WHERE username = 'tanpafeed'", one=True):
+            errors.append(("akun tak valid tersimpan",))
+
+# 7a3. Staff kantor tidak boleh membuka kontroler sosial media milik administrator.
+r = kantor.get("/admin/sosial")
+if r.status_code != 403:
+    errors.append(("proteksi kontroler sosial", r.status_code))
+
 # 7b. Admin: ganti template invoice + kontroller ID
 r = admin.post("/admin/template-invoice", data={"template_invoice": "modern"},
                follow_redirects=True)

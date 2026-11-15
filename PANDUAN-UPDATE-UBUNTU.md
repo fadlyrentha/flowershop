@@ -333,6 +333,7 @@ halaman publik.
 cd /opt/rasty-florist
 sudo -u rasty .venv/bin/python smoke_test.py   # semua halaman tiap peran
 sudo -u rasty .venv/bin/python flow_test.py    # alur pesanan → faktur → bayar
+sudo -u rasty .venv/bin/python social_test.py  # penarik feed & story, tanpa jaringan
 ```
 
 Keduanya memerlukan **data contoh** (`SEED_DEMO=1`). Jangan dijalankan di

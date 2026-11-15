@@ -238,6 +238,7 @@ Aplikasi akan menyala sendiri setiap kali Windows masuk ke desktop.
 ```powershell
 python smoke_test.py    # membuka semua halaman untuk 7 peran
 python flow_test.py     # alur pesanan sampai pembayaran
+python social_test.py   # penarik feed & story sosial media (tanpa jaringan)
 python install_test.py  # memastikan instalasi bersih berhasil
 ```
 

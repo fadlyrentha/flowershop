@@ -131,6 +131,7 @@ MENUS = {
         ]),
         ("Website", [
             ("CMS Beranda", "admin.cms", "cms", "layout-text-window"),
+            ("Kontroler Sosial Media", "admin.sosial", "sosial", "instagram"),
             ("Pengaturan Situs", "admin.settings", "pengaturan", "gear"),
             ("Kolom Katalog", "admin.katalog", "katalog_seksi", "layout-three-columns"),
             ("Menu Halaman Depan", "admin.menu_publik", "menu_publik", "menu-app"),

@@ -2,6 +2,7 @@
 import json
 import os
 import tempfile
+import threading
 import time
 import uuid
 from datetime import datetime
@@ -68,6 +69,7 @@ FEATURE_LABELS = {
     "jam_operasional": "Jam Operasional & Same Day",
     "menu_publik": "Menu Halaman Depan",
     "update": "Pembaruan Aplikasi",
+    "sosial": "Kontroler Sosial Media",
 }
 
 
@@ -82,7 +84,10 @@ STAFF_ONLY = ("accounts", "account_delete", "permissions", "settings", "dashboar
               "backup", "backup_download", "backup_delete", "backup_upload", "backup_restore",
               "katalog", "rekening", "reset",
               "pengiriman", "jam_operasional", "menu_publik",
-              "update", "update_cek", "update_online", "update_upload")
+              "update", "update_cek", "update_online", "update_upload",
+              "sosial", "sosial_akun_simpan", "sosial_akun_hapus", "sosial_sinkron",
+              "sosial_sinkron_semua", "sosial_pengaturan", "sosial_item_simpan",
+              "sosial_item_hapus", "sosial_item_saklar")
 
 
 @bp.before_request
@@ -170,49 +175,289 @@ def cms():
                     "INSERT INTO testimonials (nama, isi, rating, urutan, aktif, foto) VALUES (?, ?, ?, ?, ?, ?)",
                     data + (foto,))
                 flash("Testimoni ditambahkan.", "success")
-        elif aksi == "sosial":
-            sid = request.form.get("id")
-            data = (
-                request.form.get("platform", "instagram"),
-                request.form.get("judul", "").strip(),
-                request.form.get("link", "#").strip(),
-                int(request.form.get("urutan") or 0),
-                1 if request.form.get("aktif") else 0,
-            )
-            gambar = helpers.save_upload(request.files.get("gambar"), "social")
-            if sid:
-                if gambar:
-                    database.execute(
-                        "UPDATE social_posts SET platform=?, judul=?, link=?, urutan=?, aktif=?, gambar=?"
-                        " WHERE id=?", data + (gambar, sid))
-                else:
-                    database.execute(
-                        "UPDATE social_posts SET platform=?, judul=?, link=?, urutan=?, aktif=? WHERE id=?",
-                        data + (sid,))
-                flash("Postingan sosial diperbarui.", "success")
-            else:
-                database.execute(
-                    "INSERT INTO social_posts (platform, judul, link, urutan, aktif, gambar)"
-                    " VALUES (?, ?, ?, ?, ?, ?)", data + (gambar,))
-                flash("Postingan sosial ditambahkan.", "success")
         return redirect(url_for("admin.cms"))
 
     return render_template(
         "admin/cms.html",
         slides=database.query("SELECT * FROM hero_slides ORDER BY urutan, id"),
         testimonials=database.query("SELECT * FROM testimonials ORDER BY urutan, id"),
-        socials=database.query("SELECT * FROM social_posts ORDER BY urutan, id"),
         products=database.query("SELECT * FROM products ORDER BY nama"))
 
 
 @bp.route("/cms/<string:jenis>/<int:item_id>/hapus", methods=["POST"])
 def cms_delete(jenis, item_id):
-    table = {"hero": "hero_slides", "testimoni": "testimonials", "sosial": "social_posts"}.get(jenis)
+    table = {"hero": "hero_slides", "testimoni": "testimonials"}.get(jenis)
     if not table:
         abort(404)
     database.execute("DELETE FROM %s WHERE id = ?" % table, (item_id,))
     flash("Item beranda dihapus.", "info")
     return redirect(url_for("admin.cms"))
+
+
+# ------------------------------------------------- kontroler sosial media ----
+def _sosial_siap():
+    """Jalankan sinkronisasi terjadwal di latar belakang bila sudah waktunya.
+
+    Penarikan konten memanggil jaringan, jadi tidak boleh menahan permintaan
+    halaman: pekerjaannya dilempar ke thread daemon dan halaman langsung dibuka
+    dengan data yang ada.
+    """
+    import social_sync
+    if not database.social_sinkron_jatuh_tempo():
+        return
+    threading.Thread(
+        target=social_sync.sinkron_terjadwal,
+        args=(current_app.config["DATABASE"], current_app.config["UPLOAD_FOLDER"]),
+        daemon=True, name="sosial-sync-panel").start()
+
+
+@bp.route("/sosial")
+@helpers.feature_required("sosial")
+def sosial():
+    """Panel kontroler: akun sosial media beserta feed dan story-nya."""
+    _sosial_siap()
+    account_id = request.args.get("akun", type=int)
+    akun = database.social_account(account_id) if account_id else None
+    jenis = request.args.get("jenis", "feed")
+    if jenis not in database.SOCIAL_JENIS_LABEL:
+        jenis = "feed"
+    items = database.social_items(
+        account_id=akun["id"] if akun else None, jenis=jenis) if akun else []
+    return render_template(
+        "admin/sosial.html",
+        ringkas=database.social_ringkas(),
+        akun=akun,
+        akun_id=akun["id"] if akun else None,
+        jenis=jenis,
+        items=items,
+        settings=database.all_settings(),
+        platform_label=database.SOCIAL_PLATFORM_LABEL,
+        platform_ikon=database.SOCIAL_PLATFORM_IKON,
+        platform_warna=database.SOCIAL_PLATFORM_WARNA,
+        PLATFORM=database.SOCIAL_PLATFORM,
+        SUMBER=database.SOCIAL_SUMBER,
+        JENIS=database.SOCIAL_JENIS,
+        INTERVAL=database.SOCIAL_INTERVAL,
+    )
+
+
+@bp.route("/sosial/akun", methods=["POST"])
+@helpers.feature_required("sosial")
+def sosial_akun_simpan():
+    """Tambah atau ubah satu akun sosial media."""
+    account_id = request.form.get("id")
+    platform = request.form.get("platform", "instagram")
+    if platform not in database.SOCIAL_PLATFORM_LABEL:
+        abort(400)
+    sumber = request.form.get("sumber", "manual")
+    if sumber not in {k for k, _label, _ket in database.SOCIAL_SUMBER}:
+        abort(400)
+    username = request.form.get("username", "").strip().lstrip("@")
+    nama = request.form.get("nama", "").strip()
+    url = request.form.get("url", "").strip()
+    feed_url = request.form.get("feed_url", "").strip()
+    story_url = request.form.get("story_url", "").strip()
+    token = request.form.get("token", "").strip()
+    for tautan in (url, feed_url, story_url):
+        if tautan and not tautan.startswith(("http://", "https://")):
+            flash("Tautan harus dimulai dengan http:// atau https://", "danger")
+            return redirect(url_for("admin.sosial"))
+    lama = database.social_account(account_id) if account_id else None
+    if account_id and lama is None:
+        abort(404)
+    # Field token selalu kosong di formulir demi keamanan, jadi kosong berarti
+    # "jangan ubah", bukan "hapus".
+    if not token and lama is not None:
+        token = lama["token"] or ""
+    if sumber != "manual" and not (feed_url or story_url or token):
+        flash("Mode %s butuh URL feed atau access token." % sumber.upper(), "danger")
+        return redirect(url_for("admin.sosial"))
+    if not url and username:
+        url = "https://" + database.SOCIAL_PLATFORM_AKHIRAN.get(platform, "") + username
+
+    def _batas(nama_field, bawaan, minimum, maksimum):
+        try:
+            nilai = int(request.form.get(nama_field) or bawaan)
+        except (TypeError, ValueError):
+            nilai = bawaan
+        return max(minimum, min(maksimum, nilai))
+
+    data = (
+        platform, nama or username or database.SOCIAL_PLATFORM_LABEL[platform],
+        username, url, sumber, feed_url, story_url, token,
+        1 if request.form.get("sinkron_otomatis") else 0,
+        _batas("jumlah_feed", 12, 1, 50), _batas("jumlah_story", 10, 1, 50),
+        1 if request.form.get("aktif") else 0,
+        _batas("urutan", 0, -999, 999),
+    )
+    avatar = helpers.save_image(request.files.get("avatar"), "social")
+    if account_id:
+        if avatar:
+            if lama["avatar"]:
+                helpers.delete_upload(lama["avatar"])
+            database.execute(
+                "UPDATE social_accounts SET platform=?, nama=?, username=?, url=?, sumber=?,"
+                " feed_url=?, story_url=?, token=?, sinkron_otomatis=?, jumlah_feed=?,"
+                " jumlah_story=?, aktif=?, urutan=?, avatar=? WHERE id=?", data + (avatar, account_id))
+        else:
+            database.execute(
+                "UPDATE social_accounts SET platform=?, nama=?, username=?, url=?, sumber=?,"
+                " feed_url=?, story_url=?, token=?, sinkron_otomatis=?, jumlah_feed=?,"
+                " jumlah_story=?, aktif=?, urutan=? WHERE id=?", data + (account_id,))
+        flash("Akun sosial media diperbarui.", "success")
+    else:
+        database.execute(
+            "INSERT INTO social_accounts (platform, nama, username, url, sumber, feed_url,"
+            " story_url, token, sinkron_otomatis, jumlah_feed, jumlah_story, aktif, urutan,"
+            " avatar, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            data + (avatar, database.now()))
+        flash("Akun sosial media ditambahkan.", "success")
+    return redirect(url_for("admin.sosial"))
+
+
+@bp.route("/sosial/akun/<int:account_id>/hapus", methods=["POST"])
+@helpers.feature_required("sosial")
+def sosial_akun_hapus(account_id):
+    """Hapus akun beserta seluruh feed & story serta gambar lokalnya."""
+    akun = database.social_account(account_id)
+    if akun is None:
+        abort(404)
+    for item in database.social_items(account_id=account_id):
+        if item["gambar"] and not item["gambar"].startswith(("http://", "https://")):
+            helpers.delete_upload(item["gambar"])
+    if akun["avatar"]:
+        helpers.delete_upload(akun["avatar"])
+    database.execute("DELETE FROM social_items WHERE account_id = ?", (account_id,))
+    database.execute("DELETE FROM social_accounts WHERE id = ?", (account_id,))
+    flash("Akun %s beserta kontennya dihapus." % (akun["nama"] or akun["username"]), "info")
+    return redirect(url_for("admin.sosial"))
+
+
+@bp.route("/sosial/akun/<int:account_id>/sinkron", methods=["POST"])
+@helpers.feature_required("sosial")
+def sosial_sinkron(account_id):
+    """Tarik feed dan story terbaru dari satu akun."""
+    import social_sync
+    if database.social_account(account_id) is None:
+        abort(404)
+    ringkas = social_sync.sinkron_akun(account_id, current_app.config["DATABASE"],
+                                       current_app.config["UPLOAD_FOLDER"])
+    pesan = " ".join(ringkas["pesan"]) or "Tidak ada yang ditarik."
+    flash(pesan, "success" if ringkas["berhasil"] else "warning")
+    return redirect(url_for("admin.sosial", akun=account_id))
+
+
+@bp.route("/sosial/sinkron-semua", methods=["POST"])
+@helpers.feature_required("sosial")
+def sosial_sinkron_semua():
+    """Tarik feed dan story dari seluruh akun aktif."""
+    import social_sync
+    ringkas = social_sync.sinkron_semua(current_app.config["DATABASE"],
+                                        current_app.config["UPLOAD_FOLDER"])
+    pesan = " ".join(ringkas["pesan"]) or "Tidak ada akun aktif yang perlu ditarik."
+    flash("%d akun diperiksa, %d konten diperbarui. %s"
+          % (ringkas["akun"], ringkas["item"], pesan),
+          "success" if ringkas["berhasil"] else "warning")
+    return redirect(url_for("admin.sosial"))
+
+
+@bp.route("/sosial/pengaturan", methods=["POST"])
+@helpers.feature_required("sosial")
+def sosial_pengaturan():
+    """Atur sinkronisasi otomatis dan jumlah konten yang tampil di beranda."""
+    database.set_setting("sosial_aktif", "1" if request.form.get("sosial_aktif") else "0")
+    try:
+        interval = int(request.form.get("sosial_interval") or 0)
+    except (TypeError, ValueError):
+        interval = 0
+    if interval not in dict(database.SOCIAL_INTERVAL):
+        interval = 0
+    database.set_setting("sosial_interval", str(interval))
+    for key, bawaan in (("sosial_feed_tampil", 8), ("sosial_story_tampil", 8)):
+        try:
+            nilai = int(request.form.get(key) or bawaan)
+        except (TypeError, ValueError):
+            nilai = bawaan
+        database.set_setting(key, str(max(1, min(24, nilai))))
+    flash("Pengaturan kontroler sosial media disimpan.", "success")
+    return redirect(url_for("admin.sosial"))
+
+
+@bp.route("/sosial/item", methods=["POST"])
+@helpers.feature_required("sosial")
+def sosial_item_simpan():
+    """Tambah atau ubah satu konten feed/story secara manual."""
+    item_id = request.form.get("id")
+    account_id = request.form.get("account_id", type=int)
+    if database.social_account(account_id) is None:
+        abort(404)
+    jenis = request.form.get("jenis", "feed")
+    if jenis not in database.SOCIAL_JENIS_LABEL:
+        abort(400)
+    link = request.form.get("link", "#").strip() or "#"
+    if link != "#" and not link.startswith(("http://", "https://")):
+        flash("Tautan konten harus dimulai dengan http:// atau https://", "danger")
+        return redirect(url_for("admin.sosial", akun=account_id, jenis=jenis))
+    data = (
+        jenis,
+        request.form.get("judul", "").strip(),
+        request.form.get("caption", "").strip(),
+        link,
+        request.form.get("waktu", "").strip(),
+        int(request.form.get("urutan") or 0),
+        1 if request.form.get("aktif") else 0,
+    )
+    gambar = helpers.save_image(request.files.get("gambar"), "social")
+    if item_id:
+        lama = database.query("SELECT * FROM social_items WHERE id = ?", (item_id,), one=True)
+        if lama is None:
+            abort(404)
+        if gambar:
+            if lama["gambar"] and not lama["gambar"].startswith(("http://", "https://")):
+                helpers.delete_upload(lama["gambar"])
+            database.execute(
+                "UPDATE social_items SET jenis=?, judul=?, caption=?, link=?, waktu=?, urutan=?,"
+                " aktif=?, gambar=? WHERE id=?", data + (gambar, item_id))
+        else:
+            database.execute(
+                "UPDATE social_items SET jenis=?, judul=?, caption=?, link=?, waktu=?, urutan=?,"
+                " aktif=? WHERE id=?", data + (item_id,))
+        flash("Konten %s diperbarui." % database.SOCIAL_JENIS_LABEL[jenis].lower(), "success")
+    else:
+        jenis_konten, judul, caption, link_konten, waktu, urutan, aktif = data
+        database.execute(
+            "INSERT INTO social_items (account_id, jenis, sumber_id, judul, caption, gambar,"
+            " link, waktu, urutan, aktif, created_at)"
+            " VALUES (?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?)",
+            (account_id, jenis_konten, judul, caption, gambar, link_konten, waktu, urutan,
+             aktif, database.now()))
+        flash("Konten %s ditambahkan." % database.SOCIAL_JENIS_LABEL[jenis].lower(), "success")
+    return redirect(url_for("admin.sosial", akun=account_id, jenis=jenis))
+
+
+@bp.route("/sosial/item/<int:item_id>/hapus", methods=["POST"])
+@helpers.feature_required("sosial")
+def sosial_item_hapus(item_id):
+    item = database.query("SELECT * FROM social_items WHERE id = ?", (item_id,), one=True)
+    if item is None:
+        abort(404)
+    if item["gambar"] and not item["gambar"].startswith(("http://", "https://")):
+        helpers.delete_upload(item["gambar"])
+    database.execute("DELETE FROM social_items WHERE id = ?", (item_id,))
+    flash("Konten sosial media dihapus.", "info")
+    return redirect(url_for("admin.sosial", akun=item["account_id"], jenis=item["jenis"]))
+
+
+@bp.route("/sosial/item/<int:item_id>/saklar", methods=["POST"])
+@helpers.feature_required("sosial")
+def sosial_item_saklar(item_id):
+    """Sembunyikan atau tampilkan satu konten di beranda."""
+    item = database.query("SELECT * FROM social_items WHERE id = ?", (item_id,), one=True)
+    if item is None:
+        abort(404)
+    database.execute("UPDATE social_items SET aktif = ? WHERE id = ?",
+                     (0 if item["aktif"] else 1, item_id))
+    return redirect(url_for("admin.sosial", akun=item["account_id"], jenis=item["jenis"]))
 
 
 # ------------------------------------------------------------ pengaturan ----

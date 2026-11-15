@@ -1,0 +1,512 @@
+{% extends "panel_base.html" %}
+{% block title %}Kontroler Sosial Media{% endblock %}
+{% block heading %}Kontroler Sosial Media{% endblock %}
+{% block subheading %}Kelola akun beserta feed &amp; story yang tampil di kolom sosial media beranda{% endblock %}
+{% block content %}
+
+<div class="alert alert-light border d-flex gap-2 py-2 small">
+  <i class="bi bi-info-circle text-rf"></i>
+  <div>
+    Setiap akun di bawah ini menyuplai kolom <strong>Sosial Media</strong> di halaman depan.
+    Konten <em>feed</em> dan <em>story</em> ditarik ulang sesuai jadwal sinkronisasi, sehingga
+    beranda selalu menampilkan konten terbaru tanpa perlu diubah manual.
+  </div>
+</div>
+
+<!-- ================= RINGKASAN & PENGATURAN ================= -->
+<div class="row g-3 mb-3">
+  <div class="col-lg-8">
+    <div class="rf-card p-4 h-100">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+        <div>
+          <h6 class="fw-bold mb-1">Akun sosial media</h6>
+          <p class="small text-muted mb-0">
+            Akun aktif ikut tampil di beranda. Tekan <strong>Sinkronkan</strong> untuk menarik
+            feed dan story terbaru saat ini juga.
+          </p>
+        </div>
+        <div class="d-flex gap-2">
+          <form method="post" action="{{ url_for('admin.sosial_sinkron_semua') }}">
+            <button class="btn btn-sm btn-outline-rf" {% if not ringkas %}disabled{% endif %}>
+              <i class="bi bi-arrow-repeat me-1"></i> Sinkronkan Semua
+            </button>
+          </form>
+          <button class="btn btn-primary btn-sm" onclick="openAkun()">
+            <i class="bi bi-plus-lg me-1"></i> Tambah Akun
+          </button>
+        </div>
+      </div>
+
+      {% if settings.sosial_terakhir_sinkron %}
+      <div class="small text-muted mb-3">
+        Sinkronisasi terakhir: {{ settings.sosial_terakhir_sinkron }}
+        {% if settings.sosial_status_sinkron %}
+          <div class="text-truncate" style="max-width:100%">{{ settings.sosial_status_sinkron }}</div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <div class="row g-3">
+        {% for a in ringkas %}
+        <div class="col-md-6">
+          <div class="rf-card p-3 h-100 border {{ 'border-rf' if a.id == akun_id }}">
+            <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+              <div class="d-flex align-items-center gap-2 min-w-0">
+                {% if a.avatar %}
+                  <img src="{{ url_for('static', filename='uploads/' + a.avatar) }}"
+                       alt="" style="width:34px;height:34px;border-radius:50%;object-fit:cover">
+                {% else %}
+                  <span class="rf-akun-ikon" style="background:{{ platform_warna.get(a.platform, '#888') }}">
+                    <i class="bi bi-{{ platform_ikon.get(a.platform, 'globe2') }}"></i>
+                  </span>
+                {% endif %}
+                <div class="min-w-0">
+                  <div class="fw-semibold small text-truncate">{{ a.nama or a.username }}</div>
+                  <div class="text-muted text-truncate" style="font-size:.72rem">
+                    {{ platform_label.get(a.platform, a.platform) }}
+                    {% if a.username %}· &#64;{{ a.username }}{% endif %}
+                  </div>
+                </div>
+              </div>
+              <span class="rf-chip {{ '' if a.aktif else 'gray' }}">{{ 'Aktif' if a.aktif else 'Off' }}</span>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 mb-2">
+              <span class="rf-chip gray"><i class="bi bi-grid-3x3-gap me-1"></i>{{ a.jumlah.feed }} feed</span>
+              <span class="rf-chip gray"><i class="bi bi-circle-square me-1"></i>{{ a.jumlah.story }} story</span>
+              <span class="rf-chip gray">{{ a.sumber|upper }}</span>
+            </div>
+
+            <div class="small text-muted mb-2">
+              {% if a.terakhir_sinkron %}
+                Sinkron: {{ a.terakhir_sinkron }}
+              {% else %}
+                Belum pernah disinkronkan
+              {% endif %}
+            </div>
+
+            <div class="d-flex flex-wrap gap-2">
+              <a class="btn btn-sm btn-light" href="{{ url_for('admin.sosial', akun=a.id) }}">
+                <i class="bi bi-list-ul me-1"></i> Konten
+              </a>
+              <form method="post" action="{{ url_for('admin.sosial_sinkron', account_id=a.id) }}">
+                <button class="btn btn-sm btn-light" title="Tarik feed & story terbaru">
+                  <i class="bi bi-arrow-repeat"></i>
+                </button>
+              </form>
+              <button class="btn btn-sm btn-light" onclick='openAkun({{ a|tojson }})' title="Ubah akun">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <form method="post" action="{{ url_for('admin.sosial_akun_hapus', account_id=a.id) }}"
+                    onsubmit="return confirm('Hapus akun ini beserta seluruh feed & story-nya?')">
+                <button class="btn btn-sm btn-light text-danger"><i class="bi bi-trash"></i></button>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <div class="col-12">
+          <div class="rf-empty">
+            Belum ada akun sosial media. Tambahkan akun agar kolom sosial media beranda terisi.
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="rf-card p-4 h-100">
+      <h6 class="fw-bold mb-3">Sinkronisasi otomatis</h6>
+      <form method="post" action="{{ url_for('admin.sosial_pengaturan') }}">
+        <div class="form-check form-switch mb-3">
+          <input class="form-check-input" type="checkbox" role="switch" name="sosial_aktif"
+                 id="s_aktif" {% if settings.sosial_aktif == '1' %}checked{% endif %}>
+          <label class="form-check-label small fw-semibold" for="s_aktif">
+            Tampilkan kolom sosial media di beranda
+          </label>
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-semibold">Jadwal penarikan konten</label>
+          <select name="sosial_interval" class="form-select">
+            {% for menit, label in INTERVAL %}
+            <option value="{{ menit }}"
+                    {% if settings.sosial_interval|int == menit %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+          <div class="form-text">
+            Diperiksa berkala di latar belakang, jadi feed & story tetap segar
+            walau panel ini tidak dibuka. "Hanya manual" mematikan penarikan otomatis.
+          </div>
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <label class="form-label small fw-semibold">Feed per akun</label>
+            <input type="number" name="sosial_feed_tampil" class="form-control" min="1" max="24"
+                   value="{{ settings.sosial_feed_tampil }}">
+          </div>
+          <div class="col-6">
+            <label class="form-label small fw-semibold">Story per akun</label>
+            <input type="number" name="sosial_story_tampil" class="form-control" min="1" max="24"
+                   value="{{ settings.sosial_story_tampil }}">
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm w-100">
+          <i class="bi bi-check2 me-1"></i> Simpan Pengaturan
+        </button>
+      </form>
+
+      <hr class="my-3">
+      <div class="small text-muted">
+        <div class="fw-semibold mb-1">Cara menarik konten</div>
+        <ul class="mb-0 ps-3">
+          <li><strong>Manual</strong> — konten diisi sendiri lewat panel.</li>
+          <li><strong>RSS</strong> — tarik dari layanan feed pihak ketiga.</li>
+          <li><strong>API</strong> — Instagram Graph API dengan token akun bisnis.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= KONTEN AKUN TERPILIH ================= -->
+{% if akun %}
+<div class="rf-card p-4">
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <div>
+      <h6 class="fw-bold mb-1">
+        Konten {{ akun.nama or akun.username }}
+        <span class="rf-chip gray ms-1">{{ platform_label.get(akun.platform, akun.platform) }}</span>
+      </h6>
+      <p class="small text-muted mb-0">
+        Konten yang dimatikan tetap tersimpan, hanya tidak tampil di beranda.
+      </p>
+    </div>
+    <div class="d-flex gap-2">
+      <ul class="nav nav-pills">
+        {% for key, label, ikon, ket in JENIS %}
+        <li class="nav-item">
+          <a class="nav-link py-1 px-3 small {% if jenis == key %}active{% endif %}"
+             href="{{ url_for('admin.sosial', akun=akun.id, jenis=key) }}">
+            <i class="bi bi-{{ ikon }} me-1"></i>{{ label }}
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+      <button class="btn btn-primary btn-sm" onclick="openItem()">
+        <i class="bi bi-plus-lg me-1"></i> Tambah
+      </button>
+      <a class="btn btn-light btn-sm" href="{{ url_for('admin.sosial') }}">Tutup</a>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-rf align-middle mb-0">
+      <thead>
+        <tr>
+          <th style="width:70px">Gambar</th>
+          <th>Judul / caption</th>
+          <th style="width:150px">Waktu</th>
+          <th style="width:90px">Sumber</th>
+          <th class="text-center" style="width:80px">Tampil</th>
+          <th class="text-end" style="width:110px">Aksi</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for it in items %}
+        <tr>
+          <td>
+            {% if it.gambar %}
+              <img src="{{ url_for('static', filename='uploads/' + it.gambar) }}" alt=""
+                   style="width:52px;height:52px;border-radius:10px;object-fit:cover">
+            {% else %}
+              <span class="rf-akun-ikon" style="background:#e9e2e5">
+                <i class="bi bi-image text-muted"></i>
+              </span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="fw-semibold small">{{ it.judul or '(tanpa judul)' }}</div>
+            {% if it.caption %}
+              <div class="text-muted text-truncate" style="font-size:.75rem;max-width:420px">
+                {{ it.caption }}
+              </div>
+            {% endif %}
+            {% if it.link and it.link != '#' %}
+              <a class="small text-rf text-truncate d-block" style="max-width:420px"
+                 href="{{ it.link }}" target="_blank" rel="noopener">{{ it.link }}</a>
+            {% endif %}
+          </td>
+          <td class="small text-muted">{{ it.waktu or '—' }}</td>
+          <td>
+            <span class="rf-chip {{ 'gray' if it.sumber_id else '' }}">
+              {{ 'Tarik' if it.sumber_id else 'Manual' }}
+            </span>
+          </td>
+          <td class="text-center">
+            <form method="post" action="{{ url_for('admin.sosial_item_saklar', item_id=it.id) }}">
+              <button class="btn btn-sm btn-link p-0" title="Sembunyikan / tampilkan">
+                <i class="bi bi-{{ 'toggle-on text-success' if it.aktif else 'toggle-off text-muted' }} fs-5"></i>
+              </button>
+            </form>
+          </td>
+          <td class="text-end">
+            <div class="d-flex gap-1 justify-content-end">
+              <button class="btn btn-sm btn-light" onclick='openItem({{ it|tojson }})'>
+                <i class="bi bi-pencil"></i>
+              </button>
+              <form method="post" action="{{ url_for('admin.sosial_item_hapus', item_id=it.id) }}"
+                    onsubmit="return confirm('Hapus konten ini?')">
+                <button class="btn btn-sm btn-light text-danger"><i class="bi bi-trash"></i></button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6">
+            <div class="rf-empty">
+              Belum ada konten {{ jenis }} untuk akun ini.
+              {% if akun.sumber != 'manual' %}
+                Tekan <strong>Sinkronkan</strong> pada kartu akun untuk menariknya.
+              {% else %}
+                Tambahkan konten secara manual lewat tombol <strong>Tambah</strong>.
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- MODAL AKUN -->
+<div class="modal fade" id="akunModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <form class="modal-content" method="post" action="{{ url_for('admin.sosial_akun_simpan') }}"
+          enctype="multipart/form-data">
+      <div class="modal-header">
+        <h6 class="modal-title fw-bold" id="akunTitle">Tambah Akun Sosial Media</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body row g-3">
+        <input type="hidden" name="id" id="a_id">
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Platform</label>
+          <select name="platform" id="a_platform" class="form-select" onchange="ubahPlatform()">
+            {% for key, label, ikon, warna, akhir in PLATFORM %}
+            <option value="{{ key }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Nama tampilan</label>
+          <input name="nama" id="a_nama" class="form-control" placeholder="Rasty Florist">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Username</label>
+          <div class="input-group">
+            <span class="input-group-text" id="a_prefiks">&#64;</span>
+            <input name="username" id="a_username" class="form-control" placeholder="rastyflorist">
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">URL profil</label>
+          <input name="url" id="a_url" class="form-control" placeholder="https://instagram.com/rastyflorist">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Foto profil (opsional)</label>
+          <input type="file" name="avatar" class="form-control" accept="image/*">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Cara mengambil konten</label>
+          <select name="sumber" id="a_sumber" class="form-select" onchange="ubahSumber()">
+            {% for key, label, ket in SUMBER %}
+            <option value="{{ key }}" title="{{ ket }}">{{ label }} — {{ ket }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-12" id="a_baris_feed">
+          <label class="form-label small fw-semibold">URL feed (RSS / JSON Feed)</label>
+          <input name="feed_url" id="a_feed_url" class="form-control"
+                 placeholder="https://rsshub.app/instagram/user/rastyflorist">
+          <div class="form-text">Dipakai untuk menarik konten feed akun ini.</div>
+        </div>
+        <div class="col-12" id="a_baris_story">
+          <label class="form-label small fw-semibold">URL story (opsional)</label>
+          <input name="story_url" id="a_story_url" class="form-control"
+                 placeholder="https://rsshub.app/instagram/story/rastyflorist">
+          <div class="form-text">
+            Isi hanya bila layanan Anda punya URL story tersendiri. Bila kosong,
+            akun ini tidak menarik story (URL feed tidak dipakai sebagai gantinya).
+          </div>
+        </div>
+        <div class="col-12" id="a_baris_token">
+          <label class="form-label small fw-semibold">Access token Instagram</label>
+          <input name="token" id="a_token" class="form-control" autocomplete="off"
+                 placeholder="EAAG...">
+          <div class="form-text">
+            Hanya untuk mode API. Token disimpan di database toko dan tidak pernah dikirim ke
+            peramban; biarkan kosong bila tidak ingin mengubahnya.
+          </div>
+        </div>
+
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold">Maks. feed</label>
+          <input type="number" name="jumlah_feed" id="a_jumlah_feed" class="form-control"
+                 min="1" max="50" value="12">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold">Maks. story</label>
+          <input type="number" name="jumlah_story" id="a_jumlah_story" class="form-control"
+                 min="1" max="50" value="10">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small fw-semibold">Urutan</label>
+          <input type="number" name="urutan" id="a_urutan" class="form-control" value="0">
+        </div>
+        <div class="col-md-4 d-flex align-items-end gap-3">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="aktif" id="a_aktif" checked>
+            <label class="form-check-label small" for="a_aktif">Tampilkan di beranda</label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="sinkron_otomatis" id="a_auto" checked>
+            <label class="form-check-label small" for="a_auto">Ikut sinkron otomatis</label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL KONTEN -->
+{% if akun %}
+<div class="modal fade" id="itemModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <form class="modal-content" method="post" action="{{ url_for('admin.sosial_item_simpan') }}"
+          enctype="multipart/form-data">
+      <input type="hidden" name="account_id" value="{{ akun.id }}">
+      <div class="modal-header">
+        <h6 class="modal-title fw-bold" id="itemTitle">Tambah Konten</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body row g-3">
+        <input type="hidden" name="id" id="i_id">
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Jenis</label>
+          <select name="jenis" id="i_jenis" class="form-select">
+            {% for key, label, ikon, ket in JENIS %}
+            <option value="{{ key }}" {% if jenis == key %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Waktu (opsional)</label>
+          <input name="waktu" id="i_waktu" class="form-control" placeholder="2026-11-15 09:30:00">
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Judul</label>
+          <input name="judul" id="i_judul" class="form-control" placeholder="Bouquet pagi ini">
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Caption</label>
+          <textarea name="caption" id="i_caption" class="form-control" rows="2"></textarea>
+        </div>
+        <div class="col-12">
+          <label class="form-label small fw-semibold">Link konten</label>
+          <input name="link" id="i_link" class="form-control" value="#">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label small fw-semibold">Gambar</label>
+          <input type="file" name="gambar" class="form-control" accept="image/*">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label small fw-semibold">Urutan</label>
+          <input type="number" name="urutan" id="i_urutan" class="form-control" value="0">
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="aktif" id="i_aktif" checked>
+            <label class="form-check-label small" for="i_aktif">Tampil</label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-light" type="button" data-bs-dismiss="modal">Batal</button>
+        <button class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block head %}
+<style>
+  .border-rf { border-color: var(--rf-primary) !important; }
+  .min-w-0 { min-width: 0; }
+  .rf-akun-ikon {
+    display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%;
+    color: #fff; font-size: .95rem; flex: 0 0 34px;
+  }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const AKHIRAN = {{ PLATFORM|map(attribute=4)|list|tojson }};
+const KUNCI_PLATFORM = {{ PLATFORM|map(attribute=0)|list|tojson }};
+const setVal = (id, v) => document.getElementById(id).value = (v === null || v === undefined) ? '' : v;
+function show(id) { new bootstrap.Modal(document.getElementById(id)).show(); }
+
+function ubahPlatform() {
+  const kunci = document.getElementById('a_platform').value;
+  const i = KUNCI_PLATFORM.indexOf(kunci);
+  document.getElementById('a_prefiks').textContent = i >= 0 && AKHIRAN[i].endsWith('@') ? '@' : '';
+}
+
+function ubahSumber() {
+  const sumber = document.getElementById('a_sumber').value;
+  const pakaiUrl = sumber === 'rss' || sumber === 'api';
+  document.getElementById('a_baris_feed').hidden = !pakaiUrl;
+  document.getElementById('a_baris_story').hidden = !pakaiUrl;
+  document.getElementById('a_baris_token').hidden = sumber !== 'api';
+}
+
+function openAkun(d) {
+  document.getElementById('akunTitle').textContent = d ? 'Ubah Akun Sosial Media' : 'Tambah Akun Sosial Media';
+  setVal('a_id', d?.id); setVal('a_platform', d ? d.platform : 'instagram');
+  setVal('a_nama', d?.nama); setVal('a_username', d?.username);
+  setVal('a_url', d?.url); setVal('a_sumber', d ? d.sumber : 'manual');
+  setVal('a_feed_url', d?.feed_url); setVal('a_story_url', d?.story_url);
+  // Token tidak pernah dikirim ke peramban; biarkan kosong agar nilai lama tetap utuh.
+  setVal('a_token', '');
+  setVal('a_jumlah_feed', d?.jumlah_feed ?? 12);
+  setVal('a_jumlah_story', d?.jumlah_story ?? 10);
+  setVal('a_urutan', d?.urutan ?? 0);
+  document.getElementById('a_aktif').checked = d ? !!d.aktif : true;
+  document.getElementById('a_auto').checked = d ? !!d.sinkron_otomatis : true;
+  ubahPlatform(); ubahSumber(); show('akunModal');
+}
+
+function openItem(d) {
+  document.getElementById('itemTitle').textContent = d ? 'Ubah Konten' : 'Tambah Konten';
+  setVal('i_id', d?.id); setVal('i_jenis', d ? d.jenis : '{{ jenis }}');
+  setVal('i_judul', d?.judul); setVal('i_caption', d?.caption);
+  setVal('i_link', d ? d.link : '#'); setVal('i_waktu', d?.waktu);
+  setVal('i_urutan', d?.urutan ?? 0);
+  document.getElementById('i_aktif').checked = d ? !!d.aktif : true;
+  show('itemModal');
+}
+
+ubahPlatform(); ubahSumber();
+</script>
+{% endblock %}

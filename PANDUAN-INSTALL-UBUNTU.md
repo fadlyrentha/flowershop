@@ -347,6 +347,7 @@ cd /opt/rasty-florist
 sudo -u rasty .venv/bin/python installer/init_db.py    # struktur & akun
 sudo -u rasty .venv/bin/python smoke_test.py           # semua halaman per peran
 sudo -u rasty .venv/bin/python flow_test.py            # alur pesanan sampai bayar
+sudo -u rasty .venv/bin/python social_test.py          # penarik feed & story (tanpa jaringan)
 ```
 
 `smoke_test.py` dan `flow_test.py` mengandaikan **data contoh** sudah terpasang

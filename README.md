@@ -60,6 +60,7 @@ Dipakai oleh kedua pemasang (`rasty.conf` di Windows, `rasty.env` di Ubuntu):
 | `RASTY_PROXY` | `1` bila di belakang reverse proxy (nginx), agar URL publik benar |
 | `RASTY_DEBUG` | **`0` di server sungguhan** |
 | `RASTY_SEED_DEMO` | `1` = isi data contoh, `0` = hanya akun administrator |
+| `RASTY_SOSIAL_MONITOR` | `0` = matikan penarik feed/story sosial media di latar belakang |
 
 ## Menjalankan (pengembangan)
 
@@ -189,7 +190,8 @@ memilih ukuran **Kecil / Sedang / Besar** di menu *Ganti Template Invoice*. Logo
 (dengan/tanpa transparansi) dan JPG ditanam langsung ke berkas PDF tanpa pustaka tambahan.
 
 ### Administrator (`/admin/`)
-Dashboard · CMS beranda (slider hero, testimoni, sosial media — CRUD) · Pengaturan situs
+Dashboard · CMS beranda (slider hero, testimoni — CRUD) · **Kontroler Sosial Media**
+(akun Instagram/TikTok/Facebook/YouTube beserta feed & story, sinkron otomatis) · Pengaturan situs
 (logo, nama toko, tagline, alamat, telepon, deskripsi, warna website, jam operasional,
 same day delivery) · **Kolom Katalog** (mengaktifkan/menonaktifkan bagian beranda: hero
 slider, katalog bunga, ketersediaan stok, jam operasional & same day delivery, testimoni
@@ -208,9 +210,33 @@ harian/mingguan/bulanan/tahunan, unduh & hapus berkas) · **Pembaruan Aplikasi**
 footer website.
 
 Menu **Reset Pengaturan** mengembalikan aplikasi/website ke pengaturan default per bagian:
-Pengaturan Website, Kolom Katalog Beranda, Isi Beranda (CMS), dan Hak Akses Peran.
-Backup database otomatis dibuat lebih dulu, dan data pesanan/produk/pelanggan tidak
-pernah dihapus.
+Pengaturan Website, Kolom Katalog Beranda, Isi Beranda (CMS), Kontroler Sosial Media,
+dan Hak Akses Peran. Backup database otomatis dibuat lebih dulu, dan data
+pesanan/produk/pelanggan tidak pernah dihapus.
+
+### Kontroler Sosial Media (`/admin/sosial`)
+
+Mengelola akun sosial media yang tampil di kolom **sosial media** beranda, beserta
+**feed** dan **story** masing-masing akun. Setiap akun punya tiga mode sumber:
+
+| Mode | Cara kerja |
+|---|---|
+| **Manual** | Feed/story diisi sendiri lewat panel — tidak ada penarikan otomatis. |
+| **RSS / Feed** | Menarik daftar feed dari URL RSS 2.0, Atom, atau JSON Feed (mis. lewat layanan perantara). Story punya kolom URL sendiri, dan tidak pernah memakai URL feed sebagai cadangan. |
+| **API Resmi** | Menarik langsung dari Instagram Graph API memakai ID akun bisnis + access token. Token hanya disimpan di server dan tidak pernah dikirim ke peramban. |
+
+Sinkronisasi berjalan **otomatis di latar belakang** (selang 15 menit – 24 jam, atau
+hanya manual) tanpa perlu panel dibuka, dan juga bisa dipicu kapan saja lewat tombol
+**Sinkronkan** per akun atau **Sinkronkan Semua**. Penarikan selalu di luar jalur
+permintaan halaman, jadi beranda tidak pernah menunggu jaringan. Item hasil tarikan
+dikenali dari ID sumbernya sehingga sinkronisasi ulang **memperbarui**, bukan
+menggandakan; gambar yang sudah tersimpan tidak diunduh ulang. Story tarikan yang
+sudah lewat 24 jam dibuang bersama gambarnya, sementara konten manual dan konten
+yang disembunyikan admin tidak pernah dihapus atau dinyalakan paksa.
+
+Jumlah feed & story yang tampil di beranda diatur per akun **dan** secara global di
+kartu pengaturan panel. Menonaktifkan kontroler menyembunyikan seluruh kolom sosial
+media dari beranda dan menghentikan penarikan otomatis.
 
 ## Alur status pesanan
 
@@ -265,8 +291,10 @@ rasty-florist/
 │   └── panel_base.html # layout panel (sidebar + topbar)
 ├── static/uploads/     # berkas unggahan (foto QC, komplain, pembayaran, logo, CMS, desain invoice)
 ├── backups/            # berkas backup database (.db) dari menu Backup Data
+├── social_sync.py      # penarik feed & story sosial media (RSS/Atom/JSON Feed/API)
 ├── smoke_test.py       # uji semua rute GET per peran
 ├── flow_test.py        # uji alur pesanan → QC → pembayaran → laporan
+├── social_test.py      # uji penarik konten sosial media, tanpa jaringan
 ├── install_test.py     # uji instalasi bersih (tanpa data contoh)
 ├── update_test.py      # uji pembaruan aplikasi (versi, proteksi data, zip)
 └── requirements.txt    # Flask + waitress
@@ -277,6 +305,7 @@ rasty-florist/
 ```powershell
 python smoke_test.py    # semua rute GET untuk 7 peran (butuh data contoh)
 python flow_test.py     # alur transaksi end-to-end (butuh data contoh)
+python social_test.py   # penarik feed & story sosial media, tanpa jaringan
 python install_test.py  # instalasi bersih tanpa data contoh
 python update_test.py   # pembaruan aplikasi, tanpa jaringan
 ```

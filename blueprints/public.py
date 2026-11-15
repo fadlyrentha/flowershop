@@ -26,6 +26,8 @@ def index():
     kategori_list = [r["kategori"] for r in database.query(
         "SELECT DISTINCT kategori FROM products WHERE aktif = 1 ORDER BY kategori")]
 
+    settings = database.all_settings()
+
     return render_template(
         "public/index.html",
         slides=database.query("SELECT * FROM hero_slides WHERE aktif = 1 ORDER BY urutan, id"),
@@ -34,10 +36,17 @@ def index():
         q=q,
         kategori=kategori,
         testimonials=database.query("SELECT * FROM testimonials WHERE aktif = 1 ORDER BY urutan, id"),
-        socials=database.query("SELECT * FROM social_posts WHERE aktif = 1 ORDER BY urutan, id"),
+        # Feed & story ditarik dari setiap akun sosial media yang dikelola panel
+        # kontroler, jadi kolom beranda selalu mengikuti data akun terkini.
+        akun_sosial=database.social_accounts(aktif_saja=True),
+        feed_sosial=database.social_gabungan("feed", settings),
+        story_sosial=database.social_gabungan("story", settings),
+        platform_sosial_ikon=database.SOCIAL_PLATFORM_IKON,
+        platform_sosial_label=database.SOCIAL_PLATFORM_LABEL,
+        platform_sosial_warna=database.SOCIAL_PLATFORM_WARNA,
         stok_list=database.query(
             "SELECT * FROM products WHERE aktif = 1 ORDER BY stok DESC LIMIT 8"),
-        katalog=database.katalog_dari(database.all_settings()),
+        katalog=database.katalog_dari(settings),
     )
 
 

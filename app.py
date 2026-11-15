@@ -1,16 +1,41 @@
 """Rasty Florist - Sistem Manajemen Toko Bunga."""
 import os
+import threading
 import time
 
 from flask import Flask, render_template, send_from_directory, session
 
 import db as database
 import helpers
+import social_sync
 import updater
 
 # Cek jadwal backup paling sering sekali per jam agar tidak membebani tiap request.
 _BACKUP_CHECK = {"at": 0.0}
 _BACKUP_INTERVAL = 3600
+
+# Pemeriksaan jadwal sinkronisasi sosial media di latar belakang. Sinkronisasi
+# itu sendiri hanya berjalan bila selang waktunya sudah lewat, jadi pengecekan
+# sering tidak berarti penarikan sering.
+_SOSIAL_CHECK = 300
+
+
+def _pemantau_sosial(app):
+    """Tarik feed & story sosial media secara berkala di latar belakang.
+
+    Berjalan di thread terpisah dengan konteks aplikasi sendiri supaya kolom
+    sosial media beranda tetap segar walau panel admin tidak dibuka. Semua
+    kegagalan ditelan di dalam ``sinkron_terjadwal``.
+    """
+    with app.app_context():
+        db_path = app.config["DATABASE"]
+        upload_dir = app.config["UPLOAD_FOLDER"]
+        while True:
+            time.sleep(_SOSIAL_CHECK)
+            try:
+                social_sync.sinkron_terjadwal(db_path, upload_dir)
+            except Exception:  # noqa: BLE001 - thread latar belakang tidak boleh mati
+                pass
 
 
 def env_flag(name, default=False):
@@ -169,6 +194,15 @@ def create_app():
                 email=os.environ.get("RASTY_ADMIN_EMAIL", ""),
             )
         database.auto_backup()
+
+    # Thread dijalankan sebagai daemon agar tidak menahan proses saat server
+    # dihentikan. Saat debug dengan reloader, create_app() juga berjalan di
+    # proses induk yang tidak melayani permintaan, jadi thread hanya dimulai di
+    # proses pelayan (WERKZEUG_RUN_MAIN) atau di server produksi tanpa reloader.
+    if env_flag("RASTY_SOSIAL_MONITOR", True) and not (
+            app.debug and not os.environ.get("WERKZEUG_RUN_MAIN")):
+        threading.Thread(target=_pemantau_sosial, args=(app,), daemon=True,
+                         name="sosial-sync").start()
 
     return app
 

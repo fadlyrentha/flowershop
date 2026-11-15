@@ -76,6 +76,44 @@ MENU_PUBLIK = [
 
 KODE_TAGIHAN = ["Reguler", "Abonemen IB", "Abonemen KK", "Abonemen KTR"]
 
+# Platform sosial media yang didukung panel kontroler.
+# (kunci, label, ikon Bootstrap Icons, warna merek, akhiran URL profil)
+SOCIAL_PLATFORM = [
+    ("instagram", "Instagram", "instagram", "#d62976", "instagram.com/"),
+    ("tiktok", "TikTok", "tiktok", "#010101", "tiktok.com/@"),
+    ("facebook", "Facebook", "facebook", "#1877f2", "facebook.com/"),
+    ("youtube", "YouTube", "youtube", "#ff0000", "youtube.com/@"),
+]
+SOCIAL_PLATFORM_LABEL = {k: label for k, label, _i, _w, _u in SOCIAL_PLATFORM}
+SOCIAL_PLATFORM_IKON = {k: ikon for k, _l, ikon, _w, _u in SOCIAL_PLATFORM}
+SOCIAL_PLATFORM_WARNA = {k: warna for k, _l, _i, warna, _u in SOCIAL_PLATFORM}
+SOCIAL_PLATFORM_AKHIRAN = {k: akhir for k, _l, _i, _w, akhir in SOCIAL_PLATFORM}
+
+# Jenis konten yang ditarik dari setiap akun.
+SOCIAL_JENIS = [
+    ("feed", "Feed", "grid-3x3-gap", "Postingan terbaru pada beranda akun."),
+    ("story", "Story", "circle-square", "Story yang sedang tayang (aktif 24 jam)."),
+]
+SOCIAL_JENIS_LABEL = {k: label for k, label, _i, _k in SOCIAL_JENIS}
+
+# Cara akun sosial media diisi datanya.
+SOCIAL_SUMBER = [
+    ("manual", "Manual", "Diisi dan diubah sendiri lewat panel."),
+    ("rss", "RSS / Feed", "Menarik feed dari layanan pihak ketiga."),
+    ("api", "API Resmi", "Menarik langsung lewat API platform memakai token."),
+]
+
+# Selang sinkronisasi otomatis (menit). 0 = hanya manual.
+SOCIAL_INTERVAL = [
+    (0, "Hanya manual"),
+    (15, "Setiap 15 menit"),
+    (30, "Setiap 30 menit"),
+    (60, "Setiap 1 jam"),
+    (180, "Setiap 3 jam"),
+    (720, "Setiap 12 jam"),
+    (1440, "Setiap 24 jam"),
+]
+
 # Kategori & kompensasi keluhan yang dikelola bagian keuangan.
 KATEGORI_KELUHAN = ["Produk Rusak", "Produk Tidak Sesuai", "Keterlambatan Kirim",
                     "Salah Kirim", "Kualitas Bunga", "Lainnya"]
@@ -140,15 +178,47 @@ CREATE TABLE IF NOT EXISTS testimonials (
     urutan INTEGER DEFAULT 0
 );
 
-CREATE TABLE IF NOT EXISTS social_posts (
+CREATE TABLE IF NOT EXISTS social_accounts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     platform TEXT NOT NULL DEFAULT 'instagram',
+    nama TEXT DEFAULT '',
+    username TEXT DEFAULT '',
+    url TEXT DEFAULT '',
+    avatar TEXT DEFAULT '',
+    sumber TEXT NOT NULL DEFAULT 'manual',
+    feed_url TEXT DEFAULT '',
+    story_url TEXT DEFAULT '',
+    token TEXT DEFAULT '',
+    sinkron_otomatis INTEGER NOT NULL DEFAULT 1,
+    jumlah_feed INTEGER NOT NULL DEFAULT 12,
+    jumlah_story INTEGER NOT NULL DEFAULT 10,
+    aktif INTEGER NOT NULL DEFAULT 1,
+    urutan INTEGER DEFAULT 0,
+    terakhir_sinkron TEXT DEFAULT '',
+    status_sinkron TEXT DEFAULT '',
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS social_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    account_id INTEGER NOT NULL,
+    jenis TEXT NOT NULL DEFAULT 'feed',
+    sumber_id TEXT DEFAULT '',
     judul TEXT DEFAULT '',
+    caption TEXT DEFAULT '',
     gambar TEXT DEFAULT '',
     link TEXT DEFAULT '#',
+    waktu TEXT DEFAULT '',
+    urutan INTEGER DEFAULT 0,
     aktif INTEGER DEFAULT 1,
-    urutan INTEGER DEFAULT 0
+    created_at TEXT NOT NULL,
+    FOREIGN KEY (account_id) REFERENCES social_accounts(id) ON DELETE CASCADE
 );
+
+-- Hanya item hasil penarikan (punya sumber_id) yang perlu unik, agar konten
+-- yang diisi manual tidak saling menimpa.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_social_items_sumber
+    ON social_items(account_id, jenis, sumber_id) WHERE sumber_id != '';
 
 CREATE TABLE IF NOT EXISTS orders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -375,6 +445,12 @@ DEFAULT_SETTINGS = {
     "katalog_jam": "1",
     "katalog_testimoni": "1",
     "katalog_sosial": "1",
+    "sosial_aktif": "1",
+    "sosial_interval": "30",
+    "sosial_feed_tampil": "8",
+    "sosial_story_tampil": "8",
+    "sosial_terakhir_sinkron": "",
+    "sosial_status_sinkron": "",
 }
 
 # Ukuran logo di kop faktur/invoice. (kunci, label, tinggi px)
@@ -419,6 +495,111 @@ def katalog_aktif():
 def katalog_dari(settings):
     """Sama seperti katalog_aktif() tetapi memakai dict pengaturan yang sudah dibaca."""
     return {key: settings.get(key, "1") == "1" for key, _label, _ket in KATALOG_SEKSI}
+
+
+# ----------------------------------------------------------- sosial media ----
+def social_accounts(aktif_saja=False):
+    """Daftar akun sosial media yang ditampilkan di beranda."""
+    sql = "SELECT * FROM social_accounts"
+    if aktif_saja:
+        sql += " WHERE aktif = 1"
+    sql += " ORDER BY urutan, id"
+    return query(sql)
+
+
+def social_account(account_id):
+    return query("SELECT * FROM social_accounts WHERE id = ?", (account_id,), one=True)
+
+
+def social_items(account_id=None, jenis=None, aktif_saja=False, limit=None):
+    """Item feed/story, terbaru lebih dulu, lalu urutan manual."""
+    sql = "SELECT * FROM social_items WHERE 1=1"
+    args = []
+    if account_id is not None:
+        sql += " AND account_id = ?"
+        args.append(account_id)
+    if jenis:
+        sql += " AND jenis = ?"
+        args.append(jenis)
+    if aktif_saja:
+        sql += " AND aktif = 1"
+    sql += " ORDER BY (waktu = '') , waktu DESC, urutan, id DESC"
+    if limit:
+        sql += " LIMIT ?"
+        args.append(int(limit))
+    return query(sql, args)
+
+
+def social_gabungan(jenis, settings=None, aktif_saja=True):
+    """Item feed atau story dari seluruh akun aktif, siap ditampilkan di beranda."""
+    data = settings or all_settings()
+    if data.get("sosial_aktif", "1") != "1":
+        return []
+    kunci = "sosial_%s_tampil" % jenis
+    try:
+        batas = max(1, int(data.get(kunci, "8")))
+    except (TypeError, ValueError):
+        batas = 8
+    akun = social_accounts(aktif_saja=aktif_saja)
+    hasil = []
+    for account in akun:
+        baris = social_items(account_id=account["id"], jenis=jenis, aktif_saja=aktif_saja)
+        for row in baris[:batas]:
+            item = dict(row)
+            item["platform"] = account["platform"]
+            item["akun"] = account["nama"] or account["username"]
+            item["username"] = account["username"]
+            item["avatar"] = account["avatar"]
+            item["akun_url"] = account["url"]
+            hasil.append(item)
+    return hasil
+
+
+def social_ringkas():
+    """Statistik tiap akun untuk kartu panel kontroler.
+
+    Access token sengaja tidak diikutkan: nilainya tidak pernah perlu dikirim
+    ke peramban, dan cukuplah penanda ``token_ada`` untuk kebutuhan formulir.
+    """
+    rows = []
+    for account in social_accounts():
+        jumlah = {k: 0 for k, _l, _i, _k in SOCIAL_JENIS}
+        for item in query(
+                "SELECT jenis, COUNT(*) AS c FROM social_items WHERE account_id = ? AND aktif = 1"
+                " GROUP BY jenis", (account["id"],)):
+            jumlah[item["jenis"]] = item["c"]
+        baris = {k: v for k, v in dict(account).items() if k != "token"}
+        baris["token_ada"] = bool(account["token"])
+        baris["jumlah"] = jumlah
+        baris["total"] = sum(jumlah.values())
+        rows.append(baris)
+    return rows
+
+
+def social_jadwal_sinkron():
+    """Detik selang sinkronisasi otomatis; 0 berarti hanya sinkron manual."""
+    try:
+        menit = int(get_setting("sosial_interval", "30") or 0)
+    except (TypeError, ValueError):
+        menit = 0
+    return max(0, menit) * 60
+
+
+def social_sinkron_jatuh_tempo(settings=None):
+    """True bila sinkronisasi otomatis sudah waktunya dijalankan lagi."""
+    if (settings or all_settings()).get("sosial_aktif", "1") != "1":
+        return False
+    selang = social_jadwal_sinkron()
+    if not selang:
+        return False
+    terakhir = get_setting("sosial_terakhir_sinkron", "")
+    if not terakhir:
+        return True
+    try:
+        lalu = datetime.strptime(terakhir, "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return True
+    return (datetime.now() - lalu).total_seconds() >= selang
 
 
 # ------------------------------------------------------------- pengiriman ----
@@ -905,7 +1086,9 @@ RESET_BAGIAN = [
     ("menu_publik", "Menu Halaman Depan",
      "Seluruh menu navigasi di halaman depan ditampilkan kembali."),
     ("cms", "Isi Beranda (CMS)",
-     "Slider hero, testimoni, dan konten sosial media diganti dengan data contoh bawaan."),
+     "Slider hero dan testimoni diganti dengan data contoh bawaan."),
+    ("sosial", "Kontroler Sosial Media",
+     "Daftar akun beserta konten feed dan story diganti dengan data contoh bawaan."),
     ("hak_akses", "Hak Akses Peran",
      "Hak akses seluruh peran kembali ke susunan bawaan aplikasi."),
 ]
@@ -955,8 +1138,8 @@ def reset_menu_publik():
 
 
 def reset_cms():
-    """Ganti isi beranda dengan data contoh bawaan."""
-    for table in ("hero_slides", "testimonials", "social_posts"):
+    """Ganti slider hero dan testimoni dengan data contoh bawaan."""
+    for table in ("hero_slides", "testimonials"):
         execute("DELETE FROM %s" % table)
     for judul, subjudul, teks, link in HERO_SEED:
         execute(
@@ -965,10 +1148,27 @@ def reset_cms():
     for i, (nama, isi, rating) in enumerate(TESTIMONIAL_SEED):
         execute("INSERT INTO testimonials (nama, isi, rating, aktif, urutan) VALUES (?, ?, ?, 1, ?)",
                 (nama, isi, rating, i))
-    for i, (platform, judul, link) in enumerate(SOCIAL_SEED):
-        execute("INSERT INTO social_posts (platform, judul, link, aktif, urutan) VALUES (?, ?, ?, 1, ?)",
-                (platform, judul, link, i))
-    return len(HERO_SEED) + len(TESTIMONIAL_SEED) + len(SOCIAL_SEED)
+    return len(HERO_SEED) + len(TESTIMONIAL_SEED)
+
+
+def reset_sosial():
+    """Ganti akun & konten sosial media dengan data contoh bawaan."""
+    execute("DELETE FROM social_items")
+    execute("DELETE FROM social_accounts")
+    created = now()
+    total = 0
+    for i, (platform, nama, username, url) in enumerate(SOCIAL_AKUN_SEED):
+        akun_id = execute(
+            "INSERT INTO social_accounts (platform, nama, username, url, sumber, sinkron_otomatis,"
+            " aktif, urutan, created_at) VALUES (?, ?, ?, ?, 'manual', 0, 1, ?, ?)",
+            (platform, nama, username, url, i, created))
+        for urut, (judul, link) in enumerate(SOCIAL_ITEM_SEED.get(platform, [])):
+            execute(
+                "INSERT INTO social_items (account_id, jenis, sumber_id, judul, link, urutan,"
+                " aktif, created_at) VALUES (?, 'feed', '', ?, ?, ?, 1, ?)",
+                (akun_id, judul, link, urut, created))
+            total += 1
+    return len(SOCIAL_AKUN_SEED) + total
 
 
 def reset_hak_akses():
@@ -985,6 +1185,7 @@ RESET_AKSI = {
     "jam_operasional": reset_jam_operasional,
     "menu_publik": reset_menu_publik,
     "cms": reset_cms,
+    "sosial": reset_sosial,
     "hak_akses": reset_hak_akses,
 }
 
@@ -1075,6 +1276,41 @@ def _migrate(db):
         db.execute("INSERT OR REPLACE INTO settings (key, value)"
                    " VALUES ('migrasi_konfigurasi_panel', '1')")
         db.commit()
+    # Konten sosial media lama (satu tabel datar) dipindah ke model akun + item
+    # agar panel kontroler baru langsung berisi data toko yang sudah ada.
+    # Tabel lamanya tidak ada pada instalasi baru, jadi keberadaannya diperiksa
+    # dulu agar migrasi tidak gagal di database yang belum pernah punya.
+    done = db.execute("SELECT value FROM settings WHERE key = 'migrasi_sosial_akun'").fetchone()
+    tabel_lama = db.execute(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'social_posts'").fetchone()
+    belum_ada_akun = not db.execute(
+        "SELECT 1 FROM social_accounts LIMIT 1").fetchone()
+    if not done and tabel_lama and belum_ada_akun:
+        akun_per_platform = {}
+        for row in db.execute("SELECT * FROM social_posts ORDER BY urutan, id").fetchall():
+            platform = (row["platform"] or "instagram").lower()
+            if platform not in akun_per_platform:
+                akun_per_platform[platform] = db.execute(
+                    "INSERT INTO social_accounts (platform, nama, username, url, sumber,"
+                    " sinkron_otomatis, aktif, urutan, created_at)"
+                    " VALUES (?, ?, '', ?, 'manual', 0, 1, ?, ?)",
+                    (platform, SOCIAL_PLATFORM_LABEL.get(platform, platform.title()),
+                     row["link"] or "", len(akun_per_platform), now())).lastrowid
+            db.execute(
+                "INSERT INTO social_items (account_id, jenis, sumber_id, judul, gambar, link,"
+                " urutan, aktif, created_at) VALUES (?, 'feed', '', ?, ?, ?, ?, ?, ?)",
+                (akun_per_platform[platform], row["judul"] or "", row["gambar"] or "",
+                 row["link"] or "#", row["urutan"] or 0, row["aktif"], now()))
+        for platform, url in (("instagram", db.execute(
+                "SELECT value FROM settings WHERE key = 'instagram'").fetchone()),
+                ("tiktok", db.execute(
+                    "SELECT value FROM settings WHERE key = 'tiktok'").fetchone())):
+            if platform in akun_per_platform and url and url[0]:
+                db.execute("UPDATE social_accounts SET url = ? WHERE id = ?",
+                           (url[0], akun_per_platform[platform]))
+        db.execute("INSERT OR REPLACE INTO settings (key, value)"
+                   " VALUES ('migrasi_sosial_akun', '1')")
+        db.commit()
 
 
 # ---------------------------------------------------------------- features ----
@@ -1113,7 +1349,7 @@ BASE_FEATURES = {
         "notifikasi", "label", "konfirmasi_order", "format_nomor", "monitoring",
         "monitoring_harian", "monitoring_mandiri", "ganti_produk", "template_invoice",
         "backup", "katalog_seksi", "rekening", "reset",
-        "pengiriman_metode", "jam_operasional", "menu_publik", "update",
+        "pengiriman_metode", "jam_operasional", "menu_publik", "update", "sosial",
     ],
 }
 
@@ -1171,12 +1407,23 @@ TESTIMONIAL_SEED = [
     ("Hotel Larasati", "Kami order rutin setiap minggu untuk dekorasi lobi. Tim Rasty selalu on time dan komunikatif.", 5),
 ]
 
-SOCIAL_SEED = [
-    ("instagram", "Bouquet pagi ini", "https://instagram.com/rastyflorist"),
-    ("instagram", "Behind the scene packing", "https://instagram.com/rastyflorist"),
-    ("tiktok", "Tips merawat mawar potong", "https://tiktok.com/@rastyflorist"),
-    ("tiktok", "Restock bunga hari ini", "https://tiktok.com/@rastyflorist"),
+# Akun sosial media contoh: (platform, nama, username, url)
+SOCIAL_AKUN_SEED = [
+    ("instagram", "Rasty Florist", "rastyflorist", "https://instagram.com/rastyflorist"),
+    ("tiktok", "Rasty Florist", "rastyflorist", "https://tiktok.com/@rastyflorist"),
 ]
+
+# Konten contoh per akun: platform -> [(judul, link), ...]
+SOCIAL_ITEM_SEED = {
+    "instagram": [
+        ("Bouquet pagi ini", "https://instagram.com/rastyflorist"),
+        ("Behind the scene packing", "https://instagram.com/rastyflorist"),
+    ],
+    "tiktok": [
+        ("Tips merawat mawar potong", "https://tiktok.com/@rastyflorist"),
+        ("Restock bunga hari ini", "https://tiktok.com/@rastyflorist"),
+    ],
+}
 
 HERO_SEED = [
     ("Bunga Potong Segar Langsung dari Kebun", "Panen setiap pagi, dikirim dengan rantai dingin agar kesegaran terjaga sampai di tangan Anda.", "Lihat Katalog", "/#katalog"),
@@ -1241,11 +1488,18 @@ def seed_demo():
             (nama, isi, rating, i),
         )
 
-    for i, (platform, judul, link) in enumerate(SOCIAL_SEED):
-        execute(
-            "INSERT INTO social_posts (platform, judul, link, aktif, urutan) VALUES (?, ?, ?, 1, ?)",
-            (platform, judul, link, i),
+    for i, (platform, nama, username, url) in enumerate(SOCIAL_AKUN_SEED):
+        akun_id = execute(
+            "INSERT INTO social_accounts (platform, nama, username, url, sumber, sinkron_otomatis,"
+            " aktif, urutan, created_at) VALUES (?, ?, ?, ?, 'manual', 0, 1, ?, ?)",
+            (platform, nama, username, url, i, created),
         )
+        for urut, (judul, link) in enumerate(SOCIAL_ITEM_SEED.get(platform, [])):
+            execute(
+                "INSERT INTO social_items (account_id, jenis, sumber_id, judul, link, urutan,"
+                " aktif, created_at) VALUES (?, 'feed', '', ?, ?, ?, 1, ?)",
+                (akun_id, judul, link, urut, created),
+            )
 
     products = query("SELECT * FROM products ORDER BY id")
     customers = query("SELECT * FROM users WHERE role = 'pelanggan' ORDER BY id")
